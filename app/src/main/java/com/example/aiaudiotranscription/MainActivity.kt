@@ -1,6 +1,7 @@
 package com.example.aiaudiotranscription
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -37,33 +38,19 @@ import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
     private val filePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            val inputFilePath = FileUtils.getPath(this, uri) ?: return@let
-            val outputFilePath = "${filesDir.absolutePath}/output.mp3"
-
-            // Convert file to MP3
-            convertToMp3(inputFilePath, outputFilePath) { success, message ->
-                if (success) {
-                    transcribeAudio(this, outputFilePath) { transcription ->
-                        runOnUiThread {
-                            transcriptionState.value = transcription // Update the transcription state
-                        }
-                    }
-                } else {
-                    runOnUiThread {
-                        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        } ?: Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show()
+        uri?.let { handleFileUri(it) }
     }
 
-    // State to hold the transcription text
     private val transcriptionState = mutableStateOf("")
+    private val isBusy = mutableStateOf(false)
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Handle shared media from external apps
+        intent?.let { handleSharedIntent(it) }
+
         setContent {
             AIAudioTranscriptionTheme {
                 Scaffold(
@@ -73,8 +60,41 @@ class MainActivity : ComponentActivity() {
                     MainContent(
                         onPickFile = { filePicker.launch("audio/*") },
                         transcription = transcriptionState.value,
+                        isBusy = isBusy.value,
                         modifier = Modifier.padding(innerPadding)
                     )
+                }
+            }
+        }
+    }
+
+    private fun handleSharedIntent(intent: Intent) {
+        if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("audio/") == true) {
+            val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            uri?.let { handleFileUri(it) }
+        }
+    }
+
+    private fun handleFileUri(uri: Uri) {
+        val inputFilePath = FileUtils.getPath(this, uri) ?: return
+        val outputFilePath = "${filesDir.absolutePath}/output.mp3"
+
+        // Show busy state during processing
+        isBusy.value = true
+
+        // Convert file to MP3
+        convertToMp3(inputFilePath, outputFilePath) { success, message ->
+            if (success) {
+                transcribeAudio(this, outputFilePath) { transcription ->
+                    runOnUiThread {
+                        transcriptionState.value = transcription
+                        isBusy.value = false
+                    }
+                }
+            } else {
+                runOnUiThread {
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                    isBusy.value = false
                 }
             }
         }
@@ -125,6 +145,7 @@ class MainActivity : ComponentActivity() {
 fun MainContent(
     onPickFile: () -> Unit,
     transcription: String,
+    isBusy: Boolean,
     modifier: Modifier = Modifier
 ) {
     var apiKeyInput by remember { mutableStateOf("") }
@@ -177,14 +198,15 @@ fun MainContent(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Pick Audio File Button
-        Button(onClick = onPickFile) {
+        Button(onClick = onPickFile, enabled = !isBusy) {
             Text("Pick Audio File")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Display transcription in a large scrollable text box
-        if (transcription.isNotEmpty()) {
+        if (isBusy) {
+            CircularProgressIndicator()
+        } else if (transcription.isNotEmpty()) {
             Text(
                 text = "Transcription:",
                 style = MaterialTheme.typography.bodyMedium,
@@ -231,7 +253,8 @@ fun MainContentPreview() {
     AIAudioTranscriptionTheme {
         MainContent(
             onPickFile = {},
-            transcription = "This is a sample transcription displayed in the preview."
+            transcription = "This is a sample transcription displayed in the preview.",
+            isBusy = false
         )
     }
 }
