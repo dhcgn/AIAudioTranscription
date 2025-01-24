@@ -25,6 +25,10 @@ import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.WhisperApiService
 import com.example.aiaudiotranscription.api.WhisperResponse
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.selection.SelectionContainer
+
+
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -77,7 +81,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleFileUri(uri: Uri) {
         val inputFilePath = FileUtils.getPath(this, uri) ?: return
-        val outputFilePath = "${filesDir.absolutePath}/output.mp3"
+        val outputFilePath = "${filesDir.absolutePath}/output.ogg"
 
         // Show busy state during processing
         isBusy.value = true
@@ -105,7 +109,8 @@ class MainActivity : ComponentActivity() {
         if (outputFile.exists()) {
             outputFile.delete()
         }
-        val command = "-i $inputFilePath -vn -ar 44100 -ac 2 -b:a 192k $outputFilePath"
+        // ffmpeg -i audio.mp3 -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip audio.ogg
+        val command = "-i $inputFilePath -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip  $outputFilePath"
         FFmpegKit.executeAsync(command) { session: FFmpegSession ->
             val returnCode = session.returnCode
             if (ReturnCode.isSuccess(returnCode)) {
@@ -219,15 +224,20 @@ fun MainContent(
                     .padding(8.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = transcription,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(8.dp)
-                )
+                // Use SelectionContainer to enable text selection
+                SelectionContainer {
+                    Text(
+                        text = transcription,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
             }
         }
     }
 }
+
+
 
 object FileUtils {
     fun getPath(context: Context, uri: Uri): String? {
