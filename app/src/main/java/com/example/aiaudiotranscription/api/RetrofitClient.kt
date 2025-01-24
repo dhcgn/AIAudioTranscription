@@ -36,6 +36,8 @@ object RetrofitClient {
         val client = OkHttpClient.Builder()
             .addInterceptor(apiKeyInterceptor)
             .addInterceptor(loggingInterceptor)
+            .readTimeout(90, java.util.concurrent.TimeUnit.SECONDS) // Set read timeout to 30 seconds
+            .writeTimeout(90, java.util.concurrent.TimeUnit.SECONDS) // Set write timeout to 30 seconds
             .build()
 
         // Build and return the Retrofit instance
