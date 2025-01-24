@@ -21,11 +21,20 @@ import com.arthenica.ffmpegkit.ReturnCode
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
+import com.example.aiaudiotranscription.api.RetrofitClient
+import com.example.aiaudiotranscription.api.WhisperApiService
+import com.example.aiaudiotranscription.api.WhisperResponse
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.File
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils.saveApiKey
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 
 class MainActivity : ComponentActivity() {
@@ -75,6 +84,32 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
+    val retrofit = RetrofitClient.create(context)
+    val whisperApiService = retrofit.create(WhisperApiService::class.java)
+
+    val file = File(filePath)
+    val requestFile = RequestBody.create("audio/mpeg".toMediaTypeOrNull(), file)
+    val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
+    val model = RequestBody.create("text/plain".toMediaTypeOrNull(), "whisper-1")
+
+    whisperApiService.transcribeAudio(filePart, model)
+        .enqueue(object : Callback<WhisperResponse> {
+            override fun onResponse(call: Call<WhisperResponse>, response: Response<WhisperResponse>) {
+                if (response.isSuccessful) {
+                    onComplete(response.body()?.text ?: "No transcription found.")
+                } else {
+                    onComplete("Error: ${response.message()}")
+                }
+            }
+
+            override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
+                onComplete("Error: ${t.message}")
+            }
+        })
+}
+
 
 @Composable
 fun MainContent(onPickFile: () -> Unit, modifier: Modifier = Modifier) {
