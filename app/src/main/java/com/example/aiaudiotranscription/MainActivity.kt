@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,7 +46,7 @@ class MainActivity : ComponentActivity() {
                 if (success) {
                     transcribeAudio(this, outputFilePath) { transcription ->
                         runOnUiThread {
-                            Toast.makeText(this, transcription, Toast.LENGTH_LONG).show()
+                            transcriptionState.value = transcription // Update the transcription state
                         }
                     }
                 } else {
@@ -55,6 +57,9 @@ class MainActivity : ComponentActivity() {
             }
         } ?: Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show()
     }
+
+    // State to hold the transcription text
+    private val transcriptionState = mutableStateOf("")
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     MainContent(
                         onPickFile = { filePicker.launch("audio/*") },
+                        transcription = transcriptionState.value,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -116,10 +122,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainContent(onPickFile: () -> Unit, modifier: Modifier = Modifier) {
+fun MainContent(
+    onPickFile: () -> Unit,
+    transcription: String,
+    modifier: Modifier = Modifier
+) {
     var apiKeyInput by remember { mutableStateOf("") }
     var storedApiKey by remember { mutableStateOf("") }
-    var transcription by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -130,9 +139,10 @@ fun MainContent(onPickFile: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // API Key Input
         OutlinedTextField(
             value = apiKeyInput,
             onValueChange = { apiKeyInput = it },
@@ -161,29 +171,38 @@ fun MainContent(onPickFile: () -> Unit, modifier: Modifier = Modifier) {
             } else {
                 storedApiKey
             }
-            Text(
-                text = "Stored API Key: $preview",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Text("Stored API Key: $preview", style = MaterialTheme.typography.bodyMedium)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // Pick Audio File Button
         Button(onClick = onPickFile) {
             Text("Pick Audio File")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Display transcription in a large scrollable text box
         if (transcription.isNotEmpty()) {
             Text(
                 text = "Transcription:",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-            Text(
-                text = transcription,
-                style = MaterialTheme.typography.bodyLarge
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(8.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = transcription,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
         }
     }
 }
@@ -210,6 +229,9 @@ object FileUtils {
 @Composable
 fun MainContentPreview() {
     AIAudioTranscriptionTheme {
-        MainContent(onPickFile = {})
+        MainContent(
+            onPickFile = {},
+            transcription = "This is a sample transcription displayed in the preview."
+        )
     }
 }
