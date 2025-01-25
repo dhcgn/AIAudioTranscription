@@ -46,6 +46,11 @@
             android:name=".presentation.SettingsActivity"
             android:exported="false"
             android:label="Settings" />
+
+        <activity
+            android:name=".presentation.HistoryActivity"
+            android:exported="false"
+            android:label="History" />
     </application>
 
 

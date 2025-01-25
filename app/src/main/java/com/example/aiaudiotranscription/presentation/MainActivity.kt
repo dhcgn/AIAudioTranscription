@@ -67,6 +67,9 @@ import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import com.example.aiaudiotranscription.data.TranscriptionDbHelper
+import com.example.aiaudiotranscription.data.TranscriptionEntry
+import com.example.aiaudiotranscription.presentation.HistoryActivity
 
 class MainActivity : ComponentActivity() {
     private val filePicker =
@@ -193,7 +196,18 @@ class MainActivity : ComponentActivity() {
                     response: Response<WhisperResponse>
                 ) {
                     if (response.isSuccessful) {
-                        onComplete(response.body()?.text ?: "No transcription found.")
+                        val transcriptionText = response.body()?.text ?: "No transcription found."
+                        // Save to history
+                        val dbHelper = TranscriptionDbHelper(context)
+                        dbHelper.addTranscription(
+                            TranscriptionEntry(
+                                text = transcriptionText,
+                                language = languageState.value,
+                                prompt = promptState.value,
+                                sourceHint = filePath
+                            )
+                        )
+                        onComplete(transcriptionText)
                     } else {
                         onComplete("Error: ${response.message()}")
                     }
@@ -353,22 +367,47 @@ fun MainContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Buttons
+        // First row - Main action button
+        Button(
+            onClick = onPickFile,
+            enabled = !isBusy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            if (!isBusy) {
+                Text(
+                    "Select File and Transcribe",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            } else {
+                Text(
+                    "Transcribing...",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Second row - Navigation buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = onPickFile, enabled = !isBusy) {
-                if (!isBusy){
-                    Text("Select File and Transcribe")
-                }else{
-                    Text("Transcribing...")
-                }
+            Button(
+                onClick = {
+                    context.startActivity(Intent(context, HistoryActivity::class.java))
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("History")
             }
             Button(
                 onClick = {
                     context.startActivity(Intent(context, SettingsActivity::class.java))
-                }
+                },
+                modifier = Modifier.weight(1f)
             ) {
                 Text("Settings")
             }
