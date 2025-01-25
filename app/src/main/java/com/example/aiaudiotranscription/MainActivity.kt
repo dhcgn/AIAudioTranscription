@@ -145,7 +145,24 @@ class MainActivity : ComponentActivity() {
         val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
         val model = RequestBody.create("text/plain".toMediaTypeOrNull(), "whisper-1")
 
-        whisperApiService.transcribeAudio(filePart, model)
+        val language = languageState.value
+        val prompt = promptState.value
+
+        val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("file", file.name, requestFile)
+            .addFormDataPart("model", "whisper-1")
+
+        if (language.length in 2..3) {
+            requestBodyBuilder.addFormDataPart("language", language)
+        }
+
+        if (prompt.isNotEmpty()) {
+            requestBodyBuilder.addFormDataPart("prompt", prompt)
+        }
+
+        val requestBody = requestBodyBuilder.build()
+
+        whisperApiService.transcribeAudio(requestBody)
             .enqueue(object : Callback<WhisperResponse> {
                 override fun onResponse(
                     call: Call<WhisperResponse>,
