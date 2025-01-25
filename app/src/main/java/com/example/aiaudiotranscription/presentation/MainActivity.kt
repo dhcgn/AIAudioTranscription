@@ -143,6 +143,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleFileUri(uri: Uri) {
+        // Check if API key is set
+        if (SharedPrefsUtils.getApiKey(this).isNullOrEmpty()) {
+            Toast.makeText(this, "Please set your OpenAI API key in Settings first", Toast.LENGTH_LONG).show()
+            return
+        }
+
         val inputFilePath = FileUtils.getPath(this, uri) ?: return
         val outputFilePath = "${filesDir.absolutePath}/output.ogg"
 

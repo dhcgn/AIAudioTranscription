@@ -23,38 +23,14 @@ data class WhisperModelsResponse(
 
 data class ModelData(
     val id: String,
-    val owned_by: String,
     val created: Long
 )
 
 data class WhisperResponse(
     val text: String,
-    val task: String? = null,
     val language: String? = null,
     val duration: Double? = null,
-    val segments: List<Segment>? = null,
-    val words: List<Word>? = null
 )
-
-data class Segment(
-    val id: Int,
-    val seek: Int,
-    val start: Double,
-    val end: Double,
-    val text: String,
-    val tokens: List<Int>,
-    val temperature: Double,
-    val avg_logprob: Double,
-    val compression_ratio: Double,
-    val no_speech_prob: Double
-)
-
-data class Word(
-    val word: String,
-    val start: Double,
-    val end: Double
-)
-
 data class ChatResponse(
     val choices: List<Choice>,
 )
