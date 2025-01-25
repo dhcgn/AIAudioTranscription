@@ -26,6 +26,10 @@ Precondition: API Key for transcription service is stored
 - [ ] Allow to select from storage or share video files which are then converted to audio files for transcription
 - [ ] Add custom App Icon
 - [ ] Make text in transcription selectable with "copy all to clipboard" 
+- [ ] Additional CleanUp Prompt for more context
+- [ ] Retry button, for testing parameters changes
+- [ ] Add a progress bar for the transcription process
+- [ ] About Page with help
 
 
 ## Technical Details
