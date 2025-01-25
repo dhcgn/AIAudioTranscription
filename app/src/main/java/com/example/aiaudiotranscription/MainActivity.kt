@@ -8,6 +8,8 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -70,34 +72,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
-        }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun AppTopBar() {
-        TopAppBar(
-            title = {
-                Column {
-                    Text(
-                        "AI Transcription of speech",
-                    )
-                    Text(
-                        "Transcribe audio message to text with the help of OpenAI's Whisper API",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = LocalContentColor.current.copy(alpha = 0.7f),
-                    )
-                }
-            },
-            modifier = Modifier.padding(top = 16.dp)
-        )
-    }
-
-    @Preview(showBackground = true)
-    @Composable
-    fun AppTopBarPreview() {
-        AIAudioTranscriptionTheme {
-            AppTopBar()
         }
     }
 
@@ -184,6 +158,34 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTopBar() {
+    TopAppBar(
+        title = {
+            Column {
+                Text(
+                    "AI Transcription of speech",
+                )
+                Text(
+                    "Transcribe audio message to text with the help of OpenAI's Whisper API",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = LocalContentColor.current.copy(alpha = 0.7f),
+                )
+            }
+        },
+        modifier = Modifier.padding(top = 16.dp)
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppTopBarPreview() {
+    AIAudioTranscriptionTheme {
+        AppTopBar()
+    }
+}
+
 @Composable
 fun MainContent(
     onPickFile: () -> Unit,
@@ -191,12 +193,14 @@ fun MainContent(
     isBusy: Boolean,
     modifier: Modifier = Modifier
 ) {
-    var apiKeyInput by remember { mutableStateOf("") }
-    var storedApiKey by remember { mutableStateOf("") }
+    var language by remember { mutableStateOf("en") }
+    var prompt by remember { mutableStateOf("voice message of one person") }
+    var isApiKeySet by remember { mutableStateOf(false) }
+    var showConfig by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
+        isApiKeySet = SharedPrefsUtils.getApiKey(context)?.isNotEmpty() == true
     }
 
     Column(
@@ -206,13 +210,109 @@ fun MainContent(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // API Key Input
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Transcription Text Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(8.dp)
+                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary))
+                .verticalScroll(rememberScrollState())
+        ) {
+            SelectionContainer {
+                Text(
+                    text = transcription.ifEmpty { "Transcription will appear here..." },
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Parameters Grid
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = language,
+                onValueChange = { language = it },
+                label = { Text("Language") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = prompt,
+                onValueChange = { prompt = it },
+                label = { Text("Prompt for transcription") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isApiKeySet,
+                    onCheckedChange = null // Read-only checkbox
+                )
+                Text("OpenAI API Key is set")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Button(onClick = onPickFile, enabled = !isBusy) {
+                Text("Select File and Transcribe")
+            }
+            Button(onClick = { showConfig = true }) {
+                Text("Open Config")
+            }
+        }
+
+        if (showConfig) {
+            ConfigurationView(onClose = { showConfig = false })
+        }
+    }
+}
+
+@Composable
+fun ConfigurationView(onClose: () -> Unit) {
+    var apiKeyInput by remember { mutableStateOf("") }
+    var storedApiKey by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary)),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Configuration", style = MaterialTheme.typography.headlineSmall)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         OutlinedTextField(
             value = apiKeyInput,
             onValueChange = { apiKeyInput = it },
             label = { Text("Enter OpenAI API Key") },
             modifier = Modifier.fillMaxWidth()
         )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
@@ -220,6 +320,7 @@ fun MainContent(
                 SharedPrefsUtils.saveApiKey(context, apiKeyInput)
                 storedApiKey = apiKeyInput
                 Toast.makeText(context, "API Key Saved!", Toast.LENGTH_SHORT).show()
+                onClose()
             } else {
                 Toast.makeText(context, "API Key cannot be empty!", Toast.LENGTH_SHORT).show()
             }
@@ -230,51 +331,21 @@ fun MainContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (storedApiKey.isNotEmpty()) {
-            val preview = if (storedApiKey.length > 10) {
-                "${storedApiKey.take(5)}...${storedApiKey.takeLast(5)}"
+            val preview = if (storedApiKey.length > 12) {
+                "${storedApiKey.take(6)}...${storedApiKey.takeLast(6)}"
             } else {
                 storedApiKey
             }
             Text("Stored API Key: $preview", style = MaterialTheme.typography.bodyMedium)
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Pick Audio File Button
-        Button(onClick = onPickFile, enabled = !isBusy) {
-            Text("Pick Audio File")
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (isBusy) {
-            CircularProgressIndicator()
-        } else if (transcription.isNotEmpty()) {
-            Text(
-                text = "Transcription:",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(8.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Use SelectionContainer to enable text selection
-                SelectionContainer {
-                    Text(
-                        text = transcription,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
-            }
+        Button(onClick = onClose) {
+            Text("Close")
         }
     }
 }
-
 
 object FileUtils {
     fun getPath(context: Context, uri: Uri): String? {
