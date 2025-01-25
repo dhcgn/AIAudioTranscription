@@ -360,7 +360,11 @@ fun MainContent(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(onClick = onPickFile, enabled = !isBusy) {
-                Text("Select File and Transcribe")
+                if (!isBusy){
+                    Text("Select File and Transcribe")
+                }else{
+                    Text("Transcribing...")
+                }
             }
             Button(onClick = { showConfig = true }) {
                 Text("Open Config")
