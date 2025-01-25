@@ -4,6 +4,7 @@ agp = "8.8.0"
 converterGson = "2.9.0"
 ffmpegandroid = "0.3.2"
 ffmpegKitFull = "5.1"
+foundation = "1.5.1"
 glide = "4.15.1"
 kotlin = "2.0.0"
 coreKtx = "1.10.1"
@@ -13,7 +14,9 @@ espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
 composeBom = "2024.04.01"
+loggingInterceptor = "4.10.0"
 material3 = "1.1.1"
+okhttp = "4.10.0"
 retrofit = "2.9.0"
 securityCrypto = "1.1.0-alpha06"
 securityCryptoKtx = "1.0.0"
@@ -23,6 +26,7 @@ uiTooling = "1.5.1"
 [libraries]
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activityKtx" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 ffmpeg-kit-full = { module = "com.arthenica:ffmpeg-kit-full", version.ref = "ffmpegKitFull" }
@@ -41,7 +45,9 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "loggingInterceptor" }
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 androidx-security-crypto-ktx = { group = "androidx.security", name = "security-crypto-ktx", version.ref = "securityCryptoKtx" }
 ui = { module = "androidx.compose.ui:ui", version.ref = "ui" }
