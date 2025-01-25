@@ -50,10 +50,16 @@ class MainActivity : ComponentActivity() {
 
     private val transcriptionState = mutableStateOf("")
     private val isBusy = mutableStateOf(false)
+    private val languageState = mutableStateOf("")
+    private val promptState = mutableStateOf("")
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Load saved language and prompt
+        languageState.value = SharedPrefsUtils.getLanguage(this) ?: "en"
+        promptState.value = SharedPrefsUtils.getPrompt(this) ?: "voice message of one person"
 
         // Handle shared media from external apps
         intent?.let { handleSharedIntent(it) }
@@ -88,6 +94,7 @@ class MainActivity : ComponentActivity() {
 
         // Show busy state during processing
         isBusy.value = true
+        transcriptionState.value = "Transcription in progress..."
 
         // Convert file to MP3
         convertToMp3(inputFilePath, outputFilePath) { success, message ->
@@ -201,6 +208,8 @@ fun MainContent(
 
     LaunchedEffect(Unit) {
         isApiKeySet = SharedPrefsUtils.getApiKey(context)?.isNotEmpty() == true
+        language = SharedPrefsUtils.getLanguage(context) ?: "en"
+        prompt = SharedPrefsUtils.getPrompt(context) ?: "voice message of one person"
     }
 
     Column(
@@ -238,7 +247,10 @@ fun MainContent(
         ) {
             OutlinedTextField(
                 value = language,
-                onValueChange = { language = it },
+                onValueChange = { 
+                    language = it
+                    SharedPrefsUtils.saveLanguage(context, it)
+                },
                 label = { Text("Language") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -247,7 +259,10 @@ fun MainContent(
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = prompt,
-                onValueChange = { prompt = it },
+                onValueChange = { 
+                    prompt = it
+                    SharedPrefsUtils.savePrompt(context, it)
+                },
                 label = { Text("Prompt for transcription") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -362,6 +377,38 @@ object FileUtils {
             e.printStackTrace()
         }
         return null
+    }
+}
+
+object SharedPrefsUtils {
+    fun saveApiKey(context: Context, apiKey: String) {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("api_key", apiKey).apply()
+    }
+
+    fun getApiKey(context: Context): String? {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        return prefs.getString("api_key", null)
+    }
+
+    fun saveLanguage(context: Context, language: String) {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("language", language).apply()
+    }
+
+    fun getLanguage(context: Context): String? {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        return prefs.getString("language", null)
+    }
+
+    fun savePrompt(context: Context, prompt: String) {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("prompt", prompt).apply()
+    }
+
+    fun getPrompt(context: Context): String? {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        return prefs.getString("prompt", null)
     }
 }
 

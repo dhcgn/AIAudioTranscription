@@ -8,6 +8,8 @@ import androidx.security.crypto.MasterKey
 object SharedPrefsUtils {
     private const val PREFS_NAME = "secure_prefs"
     private const val API_KEY = "whisper_api_key"
+    private const val LANGUAGE_KEY = "language"
+    private const val PROMPT_KEY = "prompt"
 
     // Save the API key securely
     fun saveApiKey(context: Context, apiKey: String) {
@@ -19,6 +21,30 @@ object SharedPrefsUtils {
     fun getApiKey(context: Context): String? {
         val sharedPrefs = getEncryptedPrefs(context)
         return sharedPrefs.getString(API_KEY, null)
+    }
+
+    // Save the language securely
+    fun saveLanguage(context: Context, language: String) {
+        val sharedPrefs = getEncryptedPrefs(context)
+        sharedPrefs.edit().putString(LANGUAGE_KEY, language).apply()
+    }
+
+    // Retrieve the language
+    fun getLanguage(context: Context): String? {
+        val sharedPrefs = getEncryptedPrefs(context)
+        return sharedPrefs.getString(LANGUAGE_KEY, null)
+    }
+
+    // Save the prompt securely
+    fun savePrompt(context: Context, prompt: String) {
+        val sharedPrefs = getEncryptedPrefs(context)
+        sharedPrefs.edit().putString(PROMPT_KEY, prompt).apply()
+    }
+
+    // Retrieve the prompt
+    fun getPrompt(context: Context): String? {
+        val sharedPrefs = getEncryptedPrefs(context)
+        return sharedPrefs.getString(PROMPT_KEY, null)
     }
 
     // Initialize EncryptedSharedPreferences
