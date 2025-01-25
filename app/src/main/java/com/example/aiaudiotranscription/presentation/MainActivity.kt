@@ -115,7 +115,11 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         onCleanupRequest = { text -> cleanupWithAI(text) },
                         onBusyChanged = { busy -> isBusy.value = busy },
-                        onTranscriptionUpdate = { newText -> transcriptionState.value = newText } // Add this
+                        onTranscriptionUpdate = { newText -> transcriptionState.value = newText },
+                        language = languageState.value,
+                        onLanguageChange = { lang -> languageState.value = lang },
+                        prompt = promptState.value,
+                        onPromptChange = { newPrompt -> promptState.value = newPrompt }
                     )
                 }
             }
@@ -187,28 +191,29 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
+        // Get current state values directly instead of using instance variables
+        val currentLanguage = languageState.value
+        val currentPrompt = promptState.value
+
         val retrofit = RetrofitClient.create(context)
         val whisperApiService = retrofit.create(WhisperApiService::class.java)
 
         val file = File(filePath)
         val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
 
-        val language = languageState.value
-        val prompt = promptState.value
-
         val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("file", file.name, requestFile)
             .addFormDataPart("model", "whisper-1")
 
-        if (language.length in 2..3) {
-            requestBodyBuilder.addFormDataPart("language", language)
+        if (currentLanguage.length in 2..3) {
+            requestBodyBuilder.addFormDataPart("language", currentLanguage)
         }
 
-        if (prompt.isNotEmpty()) {
-            requestBodyBuilder.addFormDataPart("prompt", prompt)
+        if (currentPrompt.isNotEmpty()) {
+            requestBodyBuilder.addFormDataPart("prompt", currentPrompt)
         }
 
-        val requestBody = requestBodyBuilder.build()
+        val requestBody = requestBodyBuilder.build() // Build the request body
 
         whisperApiService.transcribeAudio(requestBody)
             .enqueue(object : Callback<WhisperResponse> {
@@ -310,18 +315,18 @@ fun MainContent(
     modifier: Modifier = Modifier,
     onCleanupRequest: suspend (String) -> String,
     onBusyChanged: (Boolean) -> Unit,
-    onTranscriptionUpdate: (String) -> Unit  // Add this parameter
+    onTranscriptionUpdate: (String) -> Unit,
+    language: String,
+    onLanguageChange: (String) -> Unit,
+    prompt: String,
+    onPromptChange: (String) -> Unit
 ) {
-    var language by remember { mutableStateOf("en") }
-    var prompt by remember { mutableStateOf("voice message of one person") }
     var isApiKeySet by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope() // Add this line
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         isApiKeySet = SharedPrefsUtils.getApiKey(context)?.isNotEmpty() == true
-        language = SharedPrefsUtils.getLanguage(context) ?: "en"
-        prompt = SharedPrefsUtils.getPrompt(context) ?: "voice message of one person"
     }
 
     Column(
@@ -448,7 +453,7 @@ fun MainContent(
             OutlinedTextField(
                 value = language,
                 onValueChange = {
-                    language = it
+                    onLanguageChange(it)
                     SharedPrefsUtils.saveLanguage(context, it)
                 },
                 label = { Text("Language") },
@@ -460,7 +465,7 @@ fun MainContent(
             OutlinedTextField(
                 value = prompt,
                 onValueChange = {
-                    prompt = it
+                    onPromptChange(it)
                     SharedPrefsUtils.savePrompt(context, it)
                 },
                 label = { Text("Prompt for transcription") },
@@ -588,7 +593,11 @@ fun MainContentPreview() {
             isBusy = false,
             onCleanupRequest = { "" },
             onBusyChanged = {},
-            onTranscriptionUpdate = {}
+            onTranscriptionUpdate = {},
+            language = "en",
+            onLanguageChange = {},
+            prompt = "voice message of one person",
+            onPromptChange = {}
         )
     }
 }
