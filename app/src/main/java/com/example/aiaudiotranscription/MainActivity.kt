@@ -212,10 +212,10 @@ fun AppTopBar() {
         title = {
             Column {
                 Text(
-                    "AI Transcription of speech",
+                    "AI Transcription for voice messages",
                 )
                 Text(
-                    "Transcribe audio message to text with the help of OpenAI's Whisper API",
+                    "Transcribe voice message or other media files to text with the help of OpenAI's Whisper API",
                     style = MaterialTheme.typography.bodyMedium,
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                 )
@@ -266,7 +266,6 @@ fun MainContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(8.dp)
                 .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary))
         ) {
             Column {
