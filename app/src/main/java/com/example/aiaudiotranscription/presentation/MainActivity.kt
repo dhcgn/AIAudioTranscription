@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -298,29 +299,56 @@ fun MainContent(
                     }
                 }
 
-                IconButton(
-                    onClick = {
-                        val clipboard =
-                            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Transcription", transcription)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT)
-                            .show()
-                    },
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp)
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                    IconButton(
+                        onClick = {
+                            val clipboard =
+                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Transcription", transcription)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT)
+                                .show()
+                        },
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Copy",
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("Copy to Clipboard")
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Copy",
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            Text("Copy to Clipboard")
+                        }
+                    }
+
+                    IconButton(
+                        onClick = {
+                            val prompt = "Clean up and format this transcription, fixing any grammar or punctuation issues: $transcription"
+                            // Here you could add logic to send this to an AI model for cleanup
+                            Toast.makeText(context, "AI cleanup not yet implemented", Toast.LENGTH_SHORT)
+                                .show()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Cleanup",
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            Text("Cleanup with AI")
+                        }
                     }
                 }
             }
