@@ -40,6 +40,15 @@
                 <data android:mimeType="audio/*" />
                 <data android:mimeType="video/*" />
             </intent-filter>
+
+            <!-- Intent for opening audio and video files directly -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
         </activity>
 
         <activity

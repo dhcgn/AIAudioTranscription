@@ -123,9 +123,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleSharedIntent(intent: Intent) {
-        if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("audio/") == true) {
-            val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-            uri?.let { handleFileUri(it) }
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                if (intent.type?.startsWith("audio/") == true || intent.type?.startsWith("video/") == true) {
+                    val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                    uri?.let { handleFileUri(it) }
+                }
+            }
+            Intent.ACTION_VIEW -> {
+                if (intent.type?.startsWith("audio/") == true || intent.type?.startsWith("video/") == true) {
+                    intent.data?.let { handleFileUri(it) }
+                }
+            }
         }
     }
 
