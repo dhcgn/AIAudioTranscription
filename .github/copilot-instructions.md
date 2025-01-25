@@ -24,6 +24,8 @@ Precondition: API Key for transcription service is stored
 - [ ] History View with used parameters and source hint
 - [ ] Make OpenAI API Key testable for working with the app (test access to model whisper-1)
 - [ ] Allow to select from storage or share video files which are then converted to audio files for transcription
+- [ ] Add custom App Icon
+- [ ] Make text in transcription selectable with "copy all to clipboard" 
 
 
 ## Technical Details

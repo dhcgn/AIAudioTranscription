@@ -1,5 +1,7 @@
 package com.example.aiaudiotranscription
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -29,12 +31,15 @@ import com.example.aiaudiotranscription.api.WhisperResponse
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
-
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -141,9 +146,9 @@ class MainActivity : ComponentActivity() {
         val whisperApiService = retrofit.create(WhisperApiService::class.java)
 
         val file = File(filePath)
-        val requestFile = RequestBody.create("audio/mpeg".toMediaTypeOrNull(), file)
+        val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
         val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
-        val model = RequestBody.create("text/plain".toMediaTypeOrNull(), "whisper-1")
+        val model = "whisper-1".toRequestBody("text/plain".toMediaTypeOrNull())
 
         val language = languageState.value
         val prompt = promptState.value
@@ -239,12 +244,18 @@ fun MainContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Transcription Text Box
+Box(
+    modifier = Modifier
+        .fillMaxWidth()
+        .weight(1f)
+        .padding(8.dp)
+        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary))
+) {
+    Column {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(8.dp)
-                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary))
                 .verticalScroll(rememberScrollState())
         ) {
             SelectionContainer {
@@ -255,6 +266,32 @@ fun MainContent(
                 )
             }
         }
+        
+        IconButton(
+            onClick = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Transcription", transcription)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Copy",
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Copy to Clipboard")
+            }
+        }
+    }
+}
 
         Spacer(modifier = Modifier.height(16.dp))
 
