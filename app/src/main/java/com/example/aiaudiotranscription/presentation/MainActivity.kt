@@ -43,15 +43,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegSession
 import com.arthenica.ffmpegkit.ReturnCode
+import com.example.aiaudiotranscription.api.ChatRequest
+import com.example.aiaudiotranscription.api.Message
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.WhisperApiService
 import com.example.aiaudiotranscription.api.WhisperModelsResponse
@@ -71,6 +76,9 @@ import java.io.InputStream
 import com.example.aiaudiotranscription.data.TranscriptionDbHelper
 import com.example.aiaudiotranscription.data.TranscriptionEntry
 import com.example.aiaudiotranscription.presentation.HistoryActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private val filePicker =
@@ -104,7 +112,10 @@ class MainActivity : ComponentActivity() {
                         onPickFile = { filePicker.launch("audio/*") },
                         transcription = transcriptionState.value,
                         isBusy = isBusy.value,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        onCleanupRequest = { text -> cleanupWithAI(text) },
+                        onBusyChanged = { busy -> isBusy.value = busy },
+                        onTranscriptionUpdate = { newText -> transcriptionState.value = newText } // Add this
                     )
                 }
             }
@@ -219,6 +230,39 @@ class MainActivity : ComponentActivity() {
                 }
             })
     }
+
+    private suspend fun cleanupWithAI(text: String): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                val retrofit = RetrofitClient.create(this@MainActivity)
+                val apiService = retrofit.create(WhisperApiService::class.java)
+                
+                val cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(this@MainActivity)
+                val prompt = cleanupPrompt.replace("{{message}}", text)
+
+                val request = ChatRequest(
+                    model = "gpt-4o-mini",
+                    messages = listOf(
+                        Message(
+                            role = "user",
+                            content = prompt
+                        )
+                    )
+                )
+
+                val response = apiService.cleanupText(request).execute()
+                if (response.isSuccessful) {
+                    response.body()?.choices?.firstOrNull()?.message?.content
+                        ?: throw Exception("No content in response")
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    throw Exception("API Error: ${response.code()} - $errorBody")
+                }
+            } catch (e: Exception) {
+                "Error during cleanup: ${e.message ?: "Unknown error"}"
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -254,11 +298,15 @@ fun MainContent(
     onPickFile: () -> Unit,
     transcription: String,
     isBusy: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCleanupRequest: suspend (String) -> String,
+    onBusyChanged: (Boolean) -> Unit,
+    onTranscriptionUpdate: (String) -> Unit  // Add this parameter
 ) {
     var language by remember { mutableStateOf("en") }
     var prompt by remember { mutableStateOf("voice message of one person") }
     var isApiKeySet by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope() // Add this line
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -323,19 +371,34 @@ fun MainContent(
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Copy",
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.scale(0.7f)
                             )
-                            Text("Copy to Clipboard")
+                            Text(
+                                text = "Copy to Clipboard",
+                                modifier = Modifier.scale(0.8f)
+                            )
                         }
                     }
 
                     IconButton(
                         onClick = {
-                            val prompt = "Clean up and format this transcription, fixing any grammar or punctuation issues: $transcription"
-                            // Here you could add logic to send this to an AI model for cleanup
-                            Toast.makeText(context, "AI cleanup not yet implemented", Toast.LENGTH_SHORT)
-                                .show()
+                            if (transcription.isNotEmpty()) {
+                                onBusyChanged(true)
+                                scope.launch {
+                                    try {
+                                        val cleanedText = onCleanupRequest(transcription)
+                                        if (!cleanedText.startsWith("Error")) {
+                                            onTranscriptionUpdate("$transcription\n\nCleaned version:\n$cleanedText") // Use the callback
+                                        } else {
+                                            Toast.makeText(context, cleanedText, Toast.LENGTH_LONG).show()
+                                        }
+                                    } finally {
+                                        onBusyChanged(false)
+                                    }
+                                }
+                            }
                         },
+                        enabled = !isBusy && transcription.isNotEmpty(),
                         modifier = Modifier.weight(1f)
                     ) {
                         Row(
@@ -345,9 +408,12 @@ fun MainContent(
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "Cleanup",
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.scale(0.7f)
                             )
-                            Text("Cleanup with AI")
+                            Text(
+                                text ="Cleanup with AI",
+                                modifier = Modifier.scale(0.8f)
+                            )
                         }
                     }
                 }
@@ -500,7 +566,10 @@ fun MainContentPreview() {
         MainContent(
             onPickFile = {},
             transcription = "This is a sample transcription displayed in the preview.",
-            isBusy = false
+            isBusy = false,
+            onCleanupRequest = { "" },
+            onBusyChanged = {},
+            onTranscriptionUpdate = {}
         )
     }
 }

@@ -10,6 +10,19 @@ object SharedPrefsUtils {
     private const val API_KEY = "whisper_api_key"
     private const val LANGUAGE_KEY = "language"
     private const val PROMPT_KEY = "prompt"
+    
+    const val DEFAULT_CLEANUP_PROMPT = """This is a transcript of a voice message, help to enhanced the readability.
+
+- enhanced the readability by adding punctuation, capitalization and paragraphs.
+- be very careful not to alter information.
+- Keep the original language of the transcript I give you. 
+- The language of your enhanced version must also the same as the transcript. 
+- Respond ONLY with the enhanced transcript, without any other text.
+
+Transcript:
+
+{{message}}
+"""
 
     // Save the API key securely
     fun saveApiKey(context: Context, apiKey: String) {
@@ -45,6 +58,18 @@ object SharedPrefsUtils {
     fun getPrompt(context: Context): String? {
         val sharedPrefs = getEncryptedPrefs(context)
         return sharedPrefs.getString(PROMPT_KEY, null)
+    }
+
+    // Save the cleanup prompt securely
+    fun saveCleanupPrompt(context: Context, prompt: String) {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("cleanup_prompt", prompt).apply()
+    }
+
+    // Retrieve the cleanup prompt
+    fun getCleanupPrompt(context: Context): String {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        return prefs.getString("cleanup_prompt", DEFAULT_CLEANUP_PROMPT) ?: DEFAULT_CLEANUP_PROMPT
     }
 
     // Initialize EncryptedSharedPreferences

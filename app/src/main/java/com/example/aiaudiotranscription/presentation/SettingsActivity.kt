@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.aiaudiotranscription.api.RetrofitClient
@@ -67,10 +68,12 @@ fun SettingsScreen(
     var apiKeyInput by remember { mutableStateOf("") }
     var storedApiKey by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf("") }
+    var cleanupPrompt by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
+        cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(context)
     }
 
     Column(
@@ -127,6 +130,32 @@ fun SettingsScreen(
                 storedApiKey
             }
             Text("Current API Key: $preview")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Cleanup prompt section with reset button underneath
+        OutlinedTextField(
+            value = cleanupPrompt,
+            onValueChange = { 
+                cleanupPrompt = it
+                SharedPrefsUtils.saveCleanupPrompt(context, it)
+            },
+            label = { Text("AI Cleanup Prompt") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Button(
+            onClick = {
+                cleanupPrompt = SharedPrefsUtils.DEFAULT_CLEANUP_PROMPT
+                SharedPrefsUtils.saveCleanupPrompt(context, cleanupPrompt)
+            },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Reset to Default")
         }
 
         if (testResult.isNotEmpty()) {
