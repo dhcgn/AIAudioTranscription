@@ -20,6 +20,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.aiaudiotranscription.api.MODEL_GPT
+import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.WhisperApiService
 import com.example.aiaudiotranscription.api.WhisperModelsResponse
@@ -112,14 +114,23 @@ fun SettingsScreen(
 
             Button(
                 onClick = {
-                    testApiKey(context, storedApiKey) { result ->
-                        testResult = result
+                    if (storedApiKey.isBlank()) {
+                        Toast.makeText(context, "Please set an API key first", Toast.LENGTH_SHORT).show()
+                    } else {
+                        testApiKey(context, storedApiKey) { result ->
+                            testResult = result
+                        }
                     }
                 },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Test Key")
             }
+        }
+
+        if (testResult.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(testResult)
         }
 
         if (storedApiKey.isNotEmpty()) {
@@ -158,10 +169,7 @@ fun SettingsScreen(
             Text("Reset to Default")
         }
 
-        if (testResult.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(testResult)
-        }
+
     }
 }
 
@@ -188,11 +196,17 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> U
             ) {
                 if (response.isSuccessful) {
                     val models = response.body()?.data ?: emptyList()
-                    val whisperModel = models.find { it.id == "whisper-1" }
-                    if (whisperModel != null) {
-                        onResult("API Key is valid and has access to the model.")
-                    } else {
-                        onResult("API Key is valid but does not have access to the model whisper-1.")
+                    val whisperModel = models.find { it.id == MODEL_WHISPER }
+                    val gptModel = models.find { it.id == MODEL_GPT }
+                    when {
+                        whisperModel != null && gptModel != null -> 
+                            onResult("API Key is valid and has access to all required models.")
+                        whisperModel == null && gptModel == null ->
+                            onResult("API Key is valid but does not have access to required models ($MODEL_WHISPER and $MODEL_GPT).")
+                        whisperModel == null ->
+                            onResult("API Key is valid but does not have access to the model $MODEL_WHISPER.")
+                        gptModel == null ->
+                            onResult("API Key is valid but does not have access to the model $MODEL_GPT.")
                     }
                 } else {
                     onResult("Error: ${response.code()} - ${response.errorBody()?.string() ?: "No error body"}")

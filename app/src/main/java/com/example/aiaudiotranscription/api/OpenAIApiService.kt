@@ -4,6 +4,10 @@ import okhttp3.RequestBody
 import retrofit2.Call
 import retrofit2.http.*
 
+// Add constants
+const val MODEL_WHISPER = "whisper-1"
+const val MODEL_GPT = "gpt-4o-mini"
+
 interface WhisperApiService {
     @Headers("OpenAI-Beta: assistants=v1")
     @GET("models")
@@ -51,7 +55,7 @@ data class Usage(
 )
 
 data class ChatRequest(
-    val model: String = "gpt-4o-mini",
+    val model: String = MODEL_GPT,
     val messages: List<Message>,
     val temperature: Double = 0.3,
 )

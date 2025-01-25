@@ -79,6 +79,7 @@ import com.example.aiaudiotranscription.presentation.HistoryActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.aiaudiotranscription.api.MODEL_WHISPER
 
 class MainActivity : ComponentActivity() {
     private val filePicker =
@@ -209,7 +210,7 @@ class MainActivity : ComponentActivity() {
 
         val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("file", file.name, requestFile)
-            .addFormDataPart("model", "whisper-1")
+            .addFormDataPart("model", MODEL_WHISPER)
 
         if (currentLanguage.length in 2..3) {
             requestBodyBuilder.addFormDataPart("language", currentLanguage)
