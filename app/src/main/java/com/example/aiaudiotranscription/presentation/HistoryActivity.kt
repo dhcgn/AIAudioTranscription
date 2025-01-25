@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import com.example.aiaudiotranscription.data.TranscriptionDbHelper
 import com.example.aiaudiotranscription.data.TranscriptionEntry
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
@@ -166,6 +171,23 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Copy") },
+                            onClick = {
+                                showMenu = false
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Transcription", entry.text)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Share,
+                                    contentDescription = "Copy"
+                                )
+                            }
+                        )
+
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = {

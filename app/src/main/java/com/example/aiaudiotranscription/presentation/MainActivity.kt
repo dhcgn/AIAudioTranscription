@@ -241,7 +241,6 @@ class MainActivity : ComponentActivity() {
                 val prompt = cleanupPrompt.replace("{{message}}", text)
 
                 val request = ChatRequest(
-                    model = "gpt-4o-mini",
                     messages = listOf(
                         Message(
                             role = "user",
@@ -389,7 +388,17 @@ fun MainContent(
                                     try {
                                         val cleanedText = onCleanupRequest(transcription)
                                         if (!cleanedText.startsWith("Error")) {
-                                            onTranscriptionUpdate("$transcription\n\nCleaned version:\n$cleanedText") // Use the callback
+                                            onTranscriptionUpdate("$transcription\n\n--- Cleaned version ---\n\n$cleanedText")
+                                            // Save cleaned version to history
+                                            val dbHelper = TranscriptionDbHelper(context)
+                                            dbHelper.addTranscription(
+                                                TranscriptionEntry(
+                                                    text = cleanedText,
+                                                    language = language,
+                                                    prompt = "Cleaned version of previous transcription",
+                                                    sourceHint = "AI Cleanup"
+                                                )
+                                            )
                                         } else {
                                             Toast.makeText(context, cleanedText, Toast.LENGTH_LONG).show()
                                         }

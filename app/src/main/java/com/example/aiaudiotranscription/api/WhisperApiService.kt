@@ -56,18 +56,11 @@ data class Word(
 )
 
 data class ChatResponse(
-    // val id: String,
     val choices: List<Choice>,
-   /* val created: Long,
-    val model: String,
-    val system_fingerprint: String,
-    val usage: Usage*/
 )
 
 data class Choice(
-    //val index: Int,
     val message: Message,
-    //val finish_reason: String
 )
 
 data class Message(
@@ -85,8 +78,4 @@ data class ChatRequest(
     val model: String = "gpt-4o-mini",
     val messages: List<Message>,
     val temperature: Double = 0.3,
-    //val max_tokens: Int = 2048,
-    // val top_p: Double = 1.0,
-    // val frequency_penalty: Double = 0.0,
-    // val presence_penalty: Double = 0.0
 )
