@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Load saved language and prompt
-        languageState.value = SharedPrefsUtils.getLanguage(this) ?: "en"
+        languageState.value = SharedPrefsUtils.getLanguage(this) ?: ""
         promptState.value = SharedPrefsUtils.getPrompt(this) ?: "voice message of one person"
 
         // Handle shared media from external apps
@@ -491,7 +491,7 @@ fun MainContent(
                             onLanguageChange(it)
                             SharedPrefsUtils.saveLanguage(context, it)
                         },
-                        label = { Text("Language") },
+                        label = { Text("Pinned Language (ISO 639 like en, de, fr, ..)") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         maxLines = 1
