@@ -34,6 +34,7 @@ Precondition: API Key for transcription service is stored
 - re-encode media file with **ffmpeg** to opus with focus a low bitrate but good enough quality for transcription
   - `ffmpeg -i audio.mp3 -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip audio.ogg` 
 - Source code is available on GitHub, so no sensitive information is allowed to be hardcoded
+- Test working OpenAI Key with: `curl https://api.openai.com/v1/models   -H "Authorization: Bearer $OPENAI_API_KEY" | jq '.data[] | select(.id == "whisper-1")'` 
 
 ### OpenAI API for transcription
 

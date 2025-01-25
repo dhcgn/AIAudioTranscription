@@ -12,11 +12,37 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,19 +53,13 @@ import com.arthenica.ffmpegkit.FFmpegSession
 import com.arthenica.ffmpegkit.ReturnCode
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.WhisperApiService
+import com.example.aiaudiotranscription.api.WhisperModelsResponse
 import com.example.aiaudiotranscription.api.WhisperResponse
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
-
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -147,8 +167,6 @@ class MainActivity : ComponentActivity() {
 
         val file = File(filePath)
         val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
-        val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
-        val model = "whisper-1".toRequestBody("text/plain".toMediaTypeOrNull())
 
         val language = languageState.value
         val prompt = promptState.value
@@ -244,54 +262,56 @@ fun MainContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Transcription Text Box
-Box(
-    modifier = Modifier
-        .fillMaxWidth()
-        .weight(1f)
-        .padding(8.dp)
-        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary))
-) {
-    Column {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
-        ) {
-            SelectionContainer {
-                Text(
-                    text = transcription.ifEmpty { "Transcription will appear here..." },
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(8.dp)
-                )
-            }
-        }
-        
-        IconButton(
-            onClick = {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Transcription", transcription)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
                 .padding(8.dp)
+                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary))
         ) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Copy",
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Copy to Clipboard")
+            Column {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    SelectionContainer {
+                        Text(
+                            text = transcription.ifEmpty { "Transcription will appear here..." },
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = {
+                        val clipboard =
+                            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Transcription", transcription)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT)
+                            .show()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Copy",
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Copy to Clipboard")
+                    }
+                }
             }
         }
-    }
-}
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -301,7 +321,7 @@ Box(
         ) {
             OutlinedTextField(
                 value = language,
-                onValueChange = { 
+                onValueChange = {
                     language = it
                     SharedPrefsUtils.saveLanguage(context, it)
                 },
@@ -313,7 +333,7 @@ Box(
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = prompt,
-                onValueChange = { 
+                onValueChange = {
                     prompt = it
                     SharedPrefsUtils.savePrompt(context, it)
                 },
@@ -357,6 +377,7 @@ Box(
 fun ConfigurationView(onClose: () -> Unit) {
     var apiKeyInput by remember { mutableStateOf("") }
     var storedApiKey by remember { mutableStateOf("") }
+    var testResult by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -410,9 +431,59 @@ fun ConfigurationView(onClose: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Button(onClick = {
+            testApiKey(context, storedApiKey) { result ->
+                testResult = result
+            }
+        }) {
+            Text("Test API Key")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (testResult.isNotEmpty()) {
+            Text(testResult, style = MaterialTheme.typography.bodyMedium)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(onClick = onClose) {
             Text("Close")
         }
+    }
+}
+
+private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> Unit) {
+    val retrofit = RetrofitClient.create(context)
+    val whisperApiService = retrofit.create(WhisperApiService::class.java)
+
+    whisperApiService.testApiKey()
+        .enqueue(object : Callback<WhisperModelsResponse> {
+            override fun onResponse(call: Call<WhisperModelsResponse>, response: Response<WhisperModelsResponse>) {
+                if (response.isSuccessful) {
+                    val models = response.body()?.data ?: emptyList()
+                    val whisperModel = models.find { it.id == "whisper-1" }
+                    if (whisperModel != null) {
+                        onResult("API Key is valid and has access to the model.")
+                    } else {
+                        onResult("API Key is valid but does not have access to the model whisper-1.")
+                    }
+                } else {
+                    onResult("Error: ${response.code()} - ${response.errorBody()?.string() ?: "No error body"}")
+                }
+            }
+
+            override fun onFailure(call: Call<WhisperModelsResponse>, t: Throwable) {
+                onResult("Error: ${t.message}")
+            }
+        })
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ConfigurationViewPreview() {
+    AIAudioTranscriptionTheme {
+        ConfigurationView(onClose = {})
     }
 }
 
