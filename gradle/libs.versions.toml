@@ -16,6 +16,7 @@ activityCompose = "1.10.0"
 composeBom = "2025.01.00"
 loggingInterceptor = "4.10.0"
 material3 = "1.3.1"
+materialIconsExtended = "1.5.4"
 okhttp = "4.10.0"
 retrofit = "2.9.0"
 securityCrypto = "1.1.0-alpha06"
@@ -27,6 +28,7 @@ uiTooling = "1.7.6"
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activityKtx" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
+androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 ffmpeg-kit-full = { module = "com.arthenica:ffmpeg-kit-full", version.ref = "ffmpegKitFull" }

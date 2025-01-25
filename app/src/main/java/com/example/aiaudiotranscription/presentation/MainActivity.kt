@@ -27,7 +27,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -314,6 +318,7 @@ fun AppTopBarPreview() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainContent(
     onPickFile: () -> Unit,
@@ -326,9 +331,11 @@ fun MainContent(
     language: String,
     onLanguageChange: (String) -> Unit,
     prompt: String,
-    onPromptChange: (String) -> Unit
+    onPromptChange: (String) -> Unit,
+    previewExpanded: Boolean = false // New parameter for preview
 ) {
     var isApiKeySet by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(previewExpanded) } // Use preview value as initial state
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -453,40 +460,63 @@ fun MainContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Parameters Grid
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        // Parameters Grid in Expandable Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { isExpanded = !isExpanded }
         ) {
-            OutlinedTextField(
-                value = language,
-                onValueChange = {
-                    onLanguageChange(it)
-                    SharedPrefsUtils.saveLanguage(context, it)
-                },
-                label = { Text("Language") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                maxLines = 1
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = prompt,
-                onValueChange = {
-                    onPromptChange(it)
-                    SharedPrefsUtils.savePrompt(context, it)
-                },
-                label = { Text("Prompt for transcription") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(16.dp)
             ) {
-                Checkbox(
-                    checked = isApiKeySet,
-                    onCheckedChange = null // Read-only checkbox
-                )
-                Text("OpenAI API Key is set")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Transcription Parameters",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (isExpanded) "Collapse" else "Expand"
+                    )
+                }
+
+                if (isExpanded) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = language,
+                        onValueChange = {
+                            onLanguageChange(it)
+                            SharedPrefsUtils.saveLanguage(context, it)
+                        },
+                        label = { Text("Language") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = prompt,
+                        onValueChange = {
+                            onPromptChange(it)
+                            SharedPrefsUtils.savePrompt(context, it)
+                        },
+                        label = { Text("Prompt for transcription") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isApiKeySet,
+                            onCheckedChange = null // Read-only checkbox
+                        )
+                        Text("OpenAI API Key is set")
+                    }
+                }
             }
         }
 
@@ -604,7 +634,8 @@ fun MainContentPreview() {
             language = "en",
             onLanguageChange = {},
             prompt = "voice message of one person",
-            onPromptChange = {}
+            onPromptChange = {},
+            previewExpanded = true // Set expanded state for preview
         )
     }
 }
