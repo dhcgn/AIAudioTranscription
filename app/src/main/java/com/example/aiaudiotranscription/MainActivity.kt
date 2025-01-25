@@ -408,17 +408,37 @@ fun ConfigurationView(onClose: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            if (apiKeyInput.isNotEmpty()) {
-                SharedPrefsUtils.saveApiKey(context, apiKeyInput)
-                storedApiKey = apiKeyInput
-                Toast.makeText(context, "API Key Saved!", Toast.LENGTH_SHORT).show()
-                onClose()
-            } else {
-                Toast.makeText(context, "API Key cannot be empty!", Toast.LENGTH_SHORT).show()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = {
+                    if (apiKeyInput.isNotEmpty()) {
+                        SharedPrefsUtils.saveApiKey(context, apiKeyInput)
+                        storedApiKey = apiKeyInput
+                        Toast.makeText(context, "API Key Saved!", Toast.LENGTH_SHORT).show()
+                        onClose()
+                    } else {
+                        Toast.makeText(context, "API Key cannot be empty!", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Save API Key")
             }
-        }) {
-            Text("Save API Key")
+
+            Button(
+                onClick = {
+                    testApiKey(context, storedApiKey) { result ->
+                        testResult = result
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Test API Key")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -432,22 +452,10 @@ fun ConfigurationView(onClose: () -> Unit) {
             Text("Stored API Key: $preview", style = MaterialTheme.typography.bodyMedium)
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            testApiKey(context, storedApiKey) { result ->
-                testResult = result
-            }
-        }) {
-            Text("Test API Key")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         if (testResult.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
             Text(testResult, style = MaterialTheme.typography.bodyMedium)
         }
-
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = onClose) {
