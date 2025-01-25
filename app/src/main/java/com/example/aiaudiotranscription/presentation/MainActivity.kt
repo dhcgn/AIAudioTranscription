@@ -55,6 +55,7 @@ import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.WhisperApiService
 import com.example.aiaudiotranscription.api.WhisperModelsResponse
 import com.example.aiaudiotranscription.api.WhisperResponse
+import com.example.aiaudiotranscription.presentation.SettingsActivity
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -243,7 +244,6 @@ fun MainContent(
     var language by remember { mutableStateOf("en") }
     var prompt by remember { mutableStateOf("voice message of one person") }
     var isApiKeySet by remember { mutableStateOf(false) }
-    var showConfig by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -365,136 +365,14 @@ fun MainContent(
                     Text("Transcribing...")
                 }
             }
-            Button(onClick = { showConfig = true }) {
-                Text("Open Config")
-            }
-        }
-
-        if (showConfig) {
-            ConfigurationView(onClose = { showConfig = false })
-        }
-    }
-}
-
-@Composable
-fun ConfigurationView(onClose: () -> Unit) {
-    var apiKeyInput by remember { mutableStateOf("") }
-    var storedApiKey by remember { mutableStateOf("") }
-    var testResult by remember { mutableStateOf("") }
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary)),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Configuration", style = MaterialTheme.typography.headlineSmall)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = apiKeyInput,
-            onValueChange = { apiKeyInput = it },
-            label = { Text("Enter OpenAI API Key") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
             Button(
                 onClick = {
-                    if (apiKeyInput.isNotEmpty()) {
-                        SharedPrefsUtils.saveApiKey(context, apiKeyInput)
-                        storedApiKey = apiKeyInput
-                        Toast.makeText(context, "API Key Saved!", Toast.LENGTH_SHORT).show()
-                        onClose()
-                    } else {
-                        Toast.makeText(context, "API Key cannot be empty!", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Save API Key")
-            }
-
-            Button(
-                onClick = {
-                    testApiKey(context, storedApiKey) { result ->
-                        testResult = result
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Test API Key")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (storedApiKey.isNotEmpty()) {
-            val preview = if (storedApiKey.length > 12) {
-                "${storedApiKey.take(6)}...${storedApiKey.takeLast(6)}"
-            } else {
-                storedApiKey
-            }
-            Text("Stored API Key: $preview", style = MaterialTheme.typography.bodyMedium)
-        }
-
-        if (testResult.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(testResult, style = MaterialTheme.typography.bodyMedium)
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = onClose) {
-            Text("Close")
-        }
-    }
-}
-
-private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> Unit) {
-    val retrofit = RetrofitClient.create(context)
-    val whisperApiService = retrofit.create(WhisperApiService::class.java)
-
-    whisperApiService.testApiKey()
-        .enqueue(object : Callback<WhisperModelsResponse> {
-            override fun onResponse(call: Call<WhisperModelsResponse>, response: Response<WhisperModelsResponse>) {
-                if (response.isSuccessful) {
-                    val models = response.body()?.data ?: emptyList()
-                    val whisperModel = models.find { it.id == "whisper-1" }
-                    if (whisperModel != null) {
-                        onResult("API Key is valid and has access to the model.")
-                    } else {
-                        onResult("API Key is valid but does not have access to the model whisper-1.")
-                    }
-                } else {
-                    onResult("Error: ${response.code()} - ${response.errorBody()?.string() ?: "No error body"}")
+                    context.startActivity(Intent(context, SettingsActivity::class.java))
                 }
+            ) {
+                Text("Settings")
             }
-
-            override fun onFailure(call: Call<WhisperModelsResponse>, t: Throwable) {
-                onResult("Error: ${t.message}")
-            }
-        })
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ConfigurationViewPreview() {
-    AIAudioTranscriptionTheme {
-        ConfigurationView(onClose = {})
+        }
     }
 }
 

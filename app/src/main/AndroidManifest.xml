@@ -41,6 +41,11 @@
                 <data android:mimeType="video/*" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".presentation.SettingsActivity"
+            android:exported="false"
+            android:label="Settings" />
     </application>
 
 
