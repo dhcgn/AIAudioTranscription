@@ -41,9 +41,10 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
-    private val filePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { handleFileUri(it) }
-    }
+    private val filePicker =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri?.let { handleFileUri(it) }
+        }
 
     private val transcriptionState = mutableStateOf("")
     private val isBusy = mutableStateOf(false)
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
             AIAudioTranscriptionTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    topBar = { TopAppBar(title = { Text("Audio Transcription") }) }
+                    topBar = { AppTopBar() }
                 ) { innerPadding ->
                     MainContent(
                         onPickFile = { filePicker.launch("audio/*") },
@@ -69,6 +70,34 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun AppTopBar() {
+        TopAppBar(
+            title = {
+                Column {
+                    Text(
+                        "AI Transcription of speech",
+                    )
+                    Text(
+                        "Transcribe audio message to text with the help of OpenAI's Whisper API",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = LocalContentColor.current.copy(alpha = 0.7f),
+                    )
+                }
+            },
+            modifier = Modifier.padding(top = 16.dp)
+        )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun AppTopBarPreview() {
+        AIAudioTranscriptionTheme {
+            AppTopBar()
         }
     }
 
@@ -104,13 +133,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun convertToMp3(inputFilePath: String, outputFilePath: String, onComplete: (Boolean, String) -> Unit) {
+    private fun convertToMp3(
+        inputFilePath: String,
+        outputFilePath: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
         val outputFile = File(outputFilePath)
         if (outputFile.exists()) {
             outputFile.delete()
         }
         // ffmpeg -i audio.mp3 -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip audio.ogg
-        val command = "-i $inputFilePath -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip  $outputFilePath"
+        val command =
+            "-i $inputFilePath -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip  $outputFilePath"
         FFmpegKit.executeAsync(command) { session: FFmpegSession ->
             val returnCode = session.returnCode
             if (ReturnCode.isSuccess(returnCode)) {
@@ -130,19 +164,23 @@ class MainActivity : ComponentActivity() {
         val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
         val model = RequestBody.create("text/plain".toMediaTypeOrNull(), "whisper-1")
 
-        whisperApiService.transcribeAudio(filePart, model).enqueue(object : Callback<WhisperResponse> {
-            override fun onResponse(call: Call<WhisperResponse>, response: Response<WhisperResponse>) {
-                if (response.isSuccessful) {
-                    onComplete(response.body()?.text ?: "No transcription found.")
-                } else {
-                    onComplete("Error: ${response.message()}")
+        whisperApiService.transcribeAudio(filePart, model)
+            .enqueue(object : Callback<WhisperResponse> {
+                override fun onResponse(
+                    call: Call<WhisperResponse>,
+                    response: Response<WhisperResponse>
+                ) {
+                    if (response.isSuccessful) {
+                        onComplete(response.body()?.text ?: "No transcription found.")
+                    } else {
+                        onComplete("Error: ${response.message()}")
+                    }
                 }
-            }
 
-            override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
-                onComplete("Error: ${t.message}")
-            }
-        })
+                override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
+                    onComplete("Error: ${t.message}")
+                }
+            })
     }
 }
 
@@ -172,7 +210,7 @@ fun MainContent(
         OutlinedTextField(
             value = apiKeyInput,
             onValueChange = { apiKeyInput = it },
-            label = { Text("Enter Whisper API Key") },
+            label = { Text("Enter OpenAI API Key") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -236,7 +274,6 @@ fun MainContent(
         }
     }
 }
-
 
 
 object FileUtils {
