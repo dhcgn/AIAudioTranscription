@@ -27,3 +27,9 @@ jobs:
 
     - name: Build release APK
       run: ./gradlew assembleRelease      
+
+    - name: Upload release APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-release
+        path: app/build/outputs/apk/release/app-release-unsigned.apk
