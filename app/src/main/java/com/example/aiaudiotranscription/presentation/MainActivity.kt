@@ -278,7 +278,7 @@ fun AppTopBar() {
         title = {
             Column {
                 Text(
-                    "AI Transcription of voice messages",
+                    "AI Transcription",
                 )
                 Text(
                     "Transcribe voice message or other media files to text with the help of OpenAI's Whisper API",
@@ -547,6 +547,17 @@ fun MainContent(
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Settings")
+            }
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        data = Uri.parse("https://github.com/dhcgn/AIAudioTranscription")
+                    }
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Help")
             }
         }
     }
