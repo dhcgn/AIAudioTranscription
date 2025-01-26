@@ -1,6 +1,7 @@
 # Android AI Transcription App
 
-[gitingest for ai inference usage ](https://gitingest.com/dhcgn/AIAudioTranscription)
+- [gitingest for ai inference usage ](https://gitingest.com/dhcgn/AIAudioTranscription)
+- [.github/copilot-instructions.md](.github/copilot-instructions.md)
 
 <img src='./docs/images/Screenshot_20250126_123222_AIAudioTranscription.jpg' style="width:200px; display:block; margin:0 auto;"/>
 
