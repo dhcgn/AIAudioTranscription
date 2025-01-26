@@ -18,13 +18,18 @@ import kotlin.coroutines.resumeWithException
 class FileProcessingManager @Inject constructor(
     private val context: Context
 ) {
+    // Add constant for output file name
+    private val outputFile = File(context.filesDir, "transcription_audio.ogg")
+
     suspend fun processAudioFile(uri: Uri): File = withContext(Dispatchers.IO) {
         try {
             // 1. Copy input file
             val inputFile = copyUriToFile(uri)
             
-            // 2. Prepare output file
-            val outputFile = File(context.filesDir, "converted_${System.currentTimeMillis()}.ogg")
+            // 2. Ensure output file is clean<<
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
             
             // 3. Convert file
             convertAudioFile(inputFile.absolutePath, outputFile.absolutePath)
@@ -34,6 +39,10 @@ class FileProcessingManager @Inject constructor(
             
             outputFile
         } catch (e: Exception) {
+            // Clean up output file on error
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
             throw FileProcessingException("Failed to process audio file", e)
         }
     }
