@@ -238,6 +238,9 @@ class MainActivity : ComponentActivity() {
                 val apiService = retrofit.create(OpenAiApiService::class.java)
                 
                 val cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(this@MainActivity)
+                if (!cleanupPrompt.contains("{{message}}")) {
+                    throw Exception("Cleanup prompt must contain {{message}} placeholder")
+                }
                 val prompt = cleanupPrompt.replace("{{message}}", text)
 
                 val request = ChatRequest(
