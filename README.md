@@ -2,6 +2,10 @@
 
 [gitingest for ai inference usage ](https://gitingest.com/dhcgn/AIAudioTranscription)
 
+<img src='./docs/images/Screenshot_20250126_123222_AIAudioTranscription.jpg' style="width:200px; display:block; margin:0 auto;"/>
+
+## Introduction
+
 This project is a test project in which I wanted to evaluate the possibilities of developing an Android app with AI tools, although my focus as a software developer lies in completely different areas.
 
 I am annoyed by voice messages in the various messenger apps I receive. Therefore, my goal was to develop an Android app in which I can upload, share or open media files of any kind and then transcribe them with a third-party API. As a bonus feature, it should also be possible to give the transcript a structure so that the otherwise continuous text is easier to read. All requests should also be stored locally in the app and the required API key - which is provided by the user - should be stored in encrypted form.
