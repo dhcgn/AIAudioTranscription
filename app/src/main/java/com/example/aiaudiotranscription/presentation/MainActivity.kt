@@ -84,8 +84,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
+import com.example.aiaudiotranscription.utils.FileProcessingException
+import com.example.aiaudiotranscription.utils.FileProcessingManager
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject
+    lateinit var fileProcessingManager: FileProcessingManager
+    
     private val filePicker =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             uri?.let { handleFileUri(it) }
@@ -154,49 +162,23 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val inputFilePath = FileUtils.getPath(this, uri) ?: return
-        val outputFilePath = "${filesDir.absolutePath}/output.ogg"
-
         // Show busy state during processing
         isBusy.value = true
         transcriptionState.value = "Transcription in progress..."
 
-        // Convert file to MP3
-        convertToMp3(inputFilePath, outputFilePath) { success, message ->
-            if (success) {
-                transcribeAudio(this, outputFilePath) { transcription ->
-                    runOnUiThread {
-                        transcriptionState.value = transcription
-                        isBusy.value = false
-                    }
+        lifecycleScope.launch {
+            try {
+                val processedFile = fileProcessingManager.processAudioFile(uri)
+                transcribeAudio(this@MainActivity, processedFile.absolutePath) { transcription ->
+                    transcriptionState.value = transcription
+                    isBusy.value = false
+                    processedFile.delete() // Clean up processed file after use
                 }
-            } else {
+            } catch (e: FileProcessingException) {
                 runOnUiThread {
-                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_SHORT).show()
                     isBusy.value = false
                 }
-            }
-        }
-    }
-
-    private fun convertToMp3(
-        inputFilePath: String,
-        outputFilePath: String,
-        onComplete: (Boolean, String) -> Unit
-    ) {
-        val outputFile = File(outputFilePath)
-        if (outputFile.exists()) {
-            outputFile.delete()
-        }
-        // ffmpeg -i audio.mp3 -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip audio.ogg
-        val command =
-            "-i $inputFilePath -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip  $outputFilePath"
-        FFmpegKit.executeAsync(command) { session: FFmpegSession ->
-            val returnCode = session.returnCode
-            if (ReturnCode.isSuccess(returnCode)) {
-                onComplete(true, "File converted successfully: $outputFilePath")
-            } else {
-                onComplete(false, "Error during conversion: ${session.failStackTrace}")
             }
         }
     }
@@ -567,24 +549,6 @@ fun MainContent(
                 Text("Settings")
             }
         }
-    }
-}
-
-object FileUtils {
-    fun getPath(context: Context, uri: Uri): String? {
-        try {
-            val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-            val tempFile = File(context.cacheDir, "temp_audio_file")
-            inputStream?.use { input ->
-                FileOutputStream(tempFile).use { output ->
-                    input.copyTo(output)
-                }
-            }
-            return tempFile.absolutePath
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return null
     }
 }
 

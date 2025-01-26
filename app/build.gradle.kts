@@ -2,6 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+
+    id("com.google.dagger.hilt.android")
+    id("kotlin-kapt")  // Changed from 'kotlin("kapt")'
+    kotlin("kapt")
 }
 
 android {
@@ -87,5 +91,19 @@ dependencies {
     implementation (libs.androidx.material.icons.extended)
 }
 
+dependencies {
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.android.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+}
 
+// Allow references to generated code
+kapt {
+    correctErrorTypes = true
+}
 
+buildscript {
+    dependencies {
+        classpath(libs.hilt.android.gradle.plugin)
+    }
+}
