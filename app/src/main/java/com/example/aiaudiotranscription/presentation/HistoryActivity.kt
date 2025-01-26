@@ -237,7 +237,44 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
 @Preview(showBackground = true)
 @Composable
 fun HistoryScreenPreview() {
+    val sampleTranscriptions = listOf(
+        TranscriptionEntry(
+            id = 1,
+            text = "This is a sample transcription of an interview. The audio quality was good and the speaker was clear.",
+            language = "English",
+            prompt = "Interview transcription",
+            sourceHint = "interview.mp3",
+            timestamp = Date()
+        ),
+        TranscriptionEntry(
+            id = 2,
+            text = "Dies ist eine Beispieltranskription auf Deutsch. Die Audioqualität war ausgezeichnet.",
+            language = "German",
+            prompt = "Meeting notes",
+            sourceHint = "meeting_2024.m4a",
+            timestamp = Date()
+        ),
+        TranscriptionEntry(
+            id = 3,
+            text = "This is a longer transcription that contains multiple sentences. It demonstrates how the card handles longer text content. The text should be truncated after three lines to keep the UI clean and consistent.",
+            language = "English",
+            prompt = "Lecture transcription",
+            sourceHint = "lecture_recording.wav",
+            timestamp = Date()
+        )
+    )
+
     AIAudioTranscriptionTheme {
-        HistoryScreen()
+        Surface {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(sampleTranscriptions) { entry ->
+                    TranscriptionHistoryItem(entry = entry)
+                }
+            }
+        }
     }
 }
