@@ -30,58 +30,92 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryTopBar(
+    onBackClick: () -> Unit,
+    onDeleteAllClick: () -> Unit,
+    showDeleteAllDialog: Boolean,
+    onDeleteAllConfirm: () -> Unit,
+    onDeleteAllDismiss: () -> Unit
+) {
+    TopAppBar(
+        title = { Text("Transcription History") },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onDeleteAllClick) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete All"
+                )
+            }
+
+            if (showDeleteAllDialog) {
+                AlertDialog(
+                    onDismissRequest = onDeleteAllDismiss,
+                    title = { Text("Delete All Transcriptions") },
+                    text = { Text("Are you sure you want to delete all transcriptions? This cannot be undone.") },
+                    confirmButton = {
+                        Button(onClick = onDeleteAllConfirm) {
+                            Text("Delete All")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = onDeleteAllDismiss) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun HistoryTopBarPreview() {
+    AIAudioTranscriptionTheme {
+        Surface {
+            HistoryTopBar(
+                onBackClick = { },
+                onDeleteAllClick = { },
+                showDeleteAllDialog = false,
+                onDeleteAllConfirm = { },
+                onDeleteAllDismiss = { }
+            )
+        }
+    }
+}
+
 class HistoryActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AIAudioTranscriptionTheme {
+                var showDeleteAllDialog by remember { mutableStateOf(false) }
+                
                 Scaffold(
                     topBar = {
-                        TopAppBar(
-                            title = { Text("Transcription History") },
-                            navigationIcon = {
-                                IconButton(onClick = { finish() }) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back"
-                                    )
-                                }
+                        HistoryTopBar(
+                            onBackClick = { finish() },
+                            onDeleteAllClick = { showDeleteAllDialog = true },
+                            showDeleteAllDialog = showDeleteAllDialog,
+                            onDeleteAllConfirm = {
+                                val dbHelper = TranscriptionDbHelper(this)
+                                dbHelper.deleteAllTranscriptions()
+                                showDeleteAllDialog = false
+                                recreate()
                             },
-                            actions = {
-                                var showDeleteAllDialog by remember { mutableStateOf(false) }
-                                IconButton(onClick = { showDeleteAllDialog = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete All"
-                                    )
-                                }
-
-                                if (showDeleteAllDialog) {
-                                    AlertDialog(
-                                        onDismissRequest = { showDeleteAllDialog = false },
-                                        title = { Text("Delete All Transcriptions") },
-                                        text = { Text("Are you sure you want to delete all transcriptions? This cannot be undone.") },
-                                        confirmButton = {
-                                            Button(
-                                                onClick = {
-                                                    val dbHelper = TranscriptionDbHelper(this@HistoryActivity)
-                                                    dbHelper.deleteAllTranscriptions()
-                                                    showDeleteAllDialog = false
-                                                    recreate() // Reload activity
-                                                }
-                                            ) {
-                                                Text("Delete All")
-                                            }
-                                        },
-                                        dismissButton = {
-                                            Button(onClick = { showDeleteAllDialog = false }) {
-                                                Text("Cancel")
-                                            }
-                                        }
-                                    )
-                                }
-                            }
+                            onDeleteAllDismiss = { showDeleteAllDialog = false }
                         )
                     }
                 ) { padding ->
