@@ -391,7 +391,7 @@ fun MainContent(
                                     try {
                                         val cleanedText = onCleanupRequest(transcription)
                                         if (!cleanedText.startsWith("Error")) {
-                                            onTranscriptionUpdate("$transcription\n\n--- Cleaned version ---\n\n$cleanedText")
+                                            onTranscriptionUpdate(cleanedText)
                                             // Save cleaned version to history
                                             val dbHelper = TranscriptionDbHelper(context)
                                             dbHelper.addTranscription(
