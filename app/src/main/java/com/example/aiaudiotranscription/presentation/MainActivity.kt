@@ -221,7 +221,8 @@ class MainActivity : ComponentActivity() {
                         )
                         onComplete(transcriptionText)
                     } else {
-                        onComplete("Error: ${response.message()}")
+                        val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                        onComplete("Error: $errorBody")
                     }
                 }
 
@@ -356,8 +357,8 @@ fun MainContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp), // Reduced vertical padding
+                    horizontalArrangement = Arrangement.spacedBy(4.dp) // Reduced spacing between buttons
                 ) {
                     IconButton(
                         onClick = {
@@ -372,7 +373,8 @@ fun MainContent(
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp) // Add small vertical padding
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
@@ -419,7 +421,8 @@ fun MainContent(
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp) // Add small vertical padding
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
