@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,14 +55,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFmpegSession
-import com.arthenica.ffmpegkit.ReturnCode
 import com.example.aiaudiotranscription.api.ChatRequest
 import com.example.aiaudiotranscription.api.Message
 import com.example.aiaudiotranscription.api.RetrofitClient
-import com.example.aiaudiotranscription.api.WhisperApiService
-import com.example.aiaudiotranscription.api.WhisperModelsResponse
+import com.example.aiaudiotranscription.api.OpenAiApiService
 import com.example.aiaudiotranscription.api.WhisperResponse
 import com.example.aiaudiotranscription.presentation.SettingsActivity
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
@@ -75,8 +70,6 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
 import com.example.aiaudiotranscription.data.TranscriptionDbHelper
 import com.example.aiaudiotranscription.data.TranscriptionEntry
 import com.example.aiaudiotranscription.presentation.HistoryActivity
@@ -189,7 +182,7 @@ class MainActivity : ComponentActivity() {
         val currentPrompt = promptState.value
 
         val retrofit = RetrofitClient.create(context)
-        val whisperApiService = retrofit.create(WhisperApiService::class.java)
+        val openAiApiService = retrofit.create(OpenAiApiService::class.java)
 
         val file = File(filePath)
         val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
@@ -208,7 +201,7 @@ class MainActivity : ComponentActivity() {
 
         val requestBody = requestBodyBuilder.build() // Build the request body
 
-        whisperApiService.transcribeAudio(requestBody)
+        openAiApiService.transcribeAudio(requestBody)
             .enqueue(object : Callback<WhisperResponse> {
                 override fun onResponse(
                     call: Call<WhisperResponse>,
@@ -242,7 +235,7 @@ class MainActivity : ComponentActivity() {
         return withContext(Dispatchers.IO) {
             try {
                 val retrofit = RetrofitClient.create(this@MainActivity)
-                val apiService = retrofit.create(WhisperApiService::class.java)
+                val apiService = retrofit.create(OpenAiApiService::class.java)
                 
                 val cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(this@MainActivity)
                 val prompt = cleanupPrompt.replace("{{message}}", text)
@@ -555,7 +548,7 @@ fun MainContent(
                     }
                     context.startActivity(intent)
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(0.75f)
             ) {
                 Text("Help")
             }

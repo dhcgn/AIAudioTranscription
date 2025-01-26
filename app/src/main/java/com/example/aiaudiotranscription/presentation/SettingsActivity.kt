@@ -5,8 +5,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,13 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.aiaudiotranscription.api.MODEL_GPT
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.RetrofitClient
-import com.example.aiaudiotranscription.api.WhisperApiService
+import com.example.aiaudiotranscription.api.OpenAiApiService
 import com.example.aiaudiotranscription.api.WhisperModelsResponse
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
@@ -186,9 +183,9 @@ fun SettingsScreenPreview() {
 
 private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> Unit) {
     val retrofit = RetrofitClient.create(context)
-    val whisperApiService = retrofit.create(WhisperApiService::class.java)
+    val openAiApiService = retrofit.create(OpenAiApiService::class.java)
 
-    whisperApiService.testApiKey()
+    openAiApiService.testApiKey()
         .enqueue(object : Callback<WhisperModelsResponse> {
             override fun onResponse(
                 call: Call<WhisperModelsResponse>,

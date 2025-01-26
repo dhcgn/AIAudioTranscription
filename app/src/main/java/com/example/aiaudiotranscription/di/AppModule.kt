@@ -1,7 +1,7 @@
 package com.example.aiaudiotranscription.di
 
 import android.content.Context
-import com.example.aiaudiotranscription.api.WhisperApiService
+import com.example.aiaudiotranscription.api.OpenAiApiService
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.data.TranscriptionDbHelper
 import dagger.Module
@@ -29,7 +29,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideWhisperApiService(@ApplicationContext context: Context): WhisperApiService {
-        return RetrofitClient.create(context).create(WhisperApiService::class.java)
+    fun provideWhisperApiService(@ApplicationContext context: Context): OpenAiApiService {
+        return RetrofitClient.create(context).create(OpenAiApiService::class.java)
     }
 }

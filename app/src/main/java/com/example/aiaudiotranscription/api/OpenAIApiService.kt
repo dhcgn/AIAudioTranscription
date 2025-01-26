@@ -8,7 +8,7 @@ import retrofit2.http.*
 const val MODEL_WHISPER = "whisper-1"
 const val MODEL_GPT = "gpt-4o-mini"
 
-interface WhisperApiService {
+interface OpenAiApiService {
     @Headers("OpenAI-Beta: assistants=v1")
     @GET("models")
     fun testApiKey(): Call<WhisperModelsResponse>
@@ -46,12 +46,6 @@ data class Choice(
 data class Message(
     val role: String,
     val content: String
-)
-
-data class Usage(
-    val prompt_tokens: Int,
-    val completion_tokens: Int,
-    val total_tokens: Int
 )
 
 data class ChatRequest(
