@@ -82,6 +82,17 @@ import com.example.aiaudiotranscription.utils.FileProcessingManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
+
+sealed class ProcessingState {
+    data object Idle : ProcessingState()
+    data object CopyingMedia : ProcessingState()
+    data object RecodingToOpus : ProcessingState()
+    data object UploadingToWhisper : ProcessingState()
+    data object DownloadingResponse : ProcessingState()
+    data object CleaningUpWithAI : ProcessingState()
+}
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject
@@ -93,7 +104,7 @@ class MainActivity : ComponentActivity() {
         }
 
     private val transcriptionState = mutableStateOf("")
-    private val isBusy = mutableStateOf(false)
+    private val processingState = mutableStateOf<ProcessingState>(ProcessingState.Idle)
     private val languageState = mutableStateOf("")
     private val promptState = mutableStateOf("")
 
@@ -117,10 +128,10 @@ class MainActivity : ComponentActivity() {
                     MainContent(
                         onPickFile = { filePicker.launch("audio/*") },
                         transcription = transcriptionState.value,
-                        isBusy = isBusy.value,
+                        processingState = processingState.value,
                         modifier = Modifier.padding(innerPadding),
                         onCleanupRequest = { text -> cleanupWithAI(text) },
-                        onBusyChanged = { busy -> isBusy.value = busy },
+                        onProcessingStateChanged = { state -> processingState.value = state },
                         onTranscriptionUpdate = { newText -> transcriptionState.value = newText },
                         language = languageState.value,
                         onLanguageChange = { lang -> languageState.value = lang },
@@ -155,22 +166,29 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        // Show busy state during processing
-        isBusy.value = true
-        transcriptionState.value = "Transcription in progress..."
+        processingState.value = ProcessingState.CopyingMedia
+        transcriptionState.value = "Starting transcription process..."
 
         lifecycleScope.launch {
             try {
+                processingState.value = ProcessingState.RecodingToOpus
                 val processedFile = fileProcessingManager.processAudioFile(uri)
+                
+                // Add file size check here
+                if (processedFile.length() > MAX_FILE_SIZE_BYTES) {
+                    processedFile.delete() // Clean up the file
+                    throw FileProcessingException("Audio file is too large. Maximum size is 24MB after processing.")
+                }
+
                 transcribeAudio(this@MainActivity, processedFile.absolutePath) { transcription ->
                     transcriptionState.value = transcription
-                    isBusy.value = false
+                    processingState.value = ProcessingState.Idle
                     processedFile.delete() // Clean up processed file after use
                 }
             } catch (e: FileProcessingException) {
                 runOnUiThread {
                     Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_SHORT).show()
-                    isBusy.value = false
+                    processingState.value = ProcessingState.Idle
                 }
             }
         }
@@ -201,12 +219,15 @@ class MainActivity : ComponentActivity() {
 
         val requestBody = requestBodyBuilder.build() // Build the request body
 
+        processingState.value = ProcessingState.UploadingToWhisper
+
         openAiApiService.transcribeAudio(requestBody)
             .enqueue(object : Callback<WhisperResponse> {
                 override fun onResponse(
                     call: Call<WhisperResponse>,
                     response: Response<WhisperResponse>
                 ) {
+                    processingState.value = ProcessingState.DownloadingResponse
                     if (response.isSuccessful) {
                         val transcriptionText = response.body()?.text ?: "No transcription found."
                         // Save to history
@@ -224,10 +245,12 @@ class MainActivity : ComponentActivity() {
                         val errorBody = response.errorBody()?.string() ?: "Unknown error"
                         onComplete("Error: $errorBody")
                     }
+                    processingState.value = ProcessingState.Idle
                 }
 
                 override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
                     onComplete("Error: ${t.message}")
+                    processingState.value = ProcessingState.Idle
                 }
             })
     }
@@ -302,10 +325,10 @@ fun AppTopBarPreview() {
 fun MainContent(
     onPickFile: () -> Unit,
     transcription: String,
-    isBusy: Boolean,
+    processingState: ProcessingState,
     modifier: Modifier = Modifier,
     onCleanupRequest: suspend (String) -> String,
-    onBusyChanged: (Boolean) -> Unit,
+    onProcessingStateChanged: (ProcessingState) -> Unit,
     onTranscriptionUpdate: (String) -> Unit,
     language: String,
     onLanguageChange: (String) -> Unit,
@@ -391,7 +414,7 @@ fun MainContent(
                     IconButton(
                         onClick = {
                             if (transcription.isNotEmpty()) {
-                                onBusyChanged(true)
+                                onProcessingStateChanged(ProcessingState.CleaningUpWithAI)
                                 scope.launch {
                                     try {
                                         val cleanedText = onCleanupRequest(transcription)
@@ -411,12 +434,12 @@ fun MainContent(
                                             Toast.makeText(context, cleanedText, Toast.LENGTH_LONG).show()
                                         }
                                     } finally {
-                                        onBusyChanged(false)
+                                        onProcessingStateChanged(ProcessingState.Idle)
                                     }
                                 }
                             }
                         },
-                        enabled = !isBusy && transcription.isNotEmpty(),
+                        enabled = processingState == ProcessingState.Idle && transcription.isNotEmpty(),
                         modifier = Modifier.weight(1f)
                     ) {
                         Row(
@@ -506,22 +529,24 @@ fun MainContent(
         // First row - Main action button
         Button(
             onClick = onPickFile,
-            enabled = !isBusy,
+            enabled = processingState == ProcessingState.Idle,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
         ) {
-            if (!isBusy) {
-                Text(
-                    "Select File and Transcribe",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            } else {
-                Text(
-                    "Transcribing...",
-                    style = MaterialTheme.typography.titleMedium
-                )
+            val buttonText = when (processingState) {
+                ProcessingState.Idle -> "Select File and Transcribe"
+                ProcessingState.CopyingMedia -> "Copying Media File..."
+                ProcessingState.RecodingToOpus -> "Re-encode to Opus..."
+                ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
+                ProcessingState.DownloadingResponse -> "Downloading Response..."
+                ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."
+                else -> {"Unknown State"}
             }
+            Text(
+                buttonText,
+                style = MaterialTheme.typography.titleMedium
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -601,9 +626,9 @@ fun MainContentPreview() {
         MainContent(
             onPickFile = {},
             transcription = "This is a sample transcription displayed in the preview.",
-            isBusy = false,
+            processingState = ProcessingState.Idle,
             onCleanupRequest = { "" },
-            onBusyChanged = {},
+            onProcessingStateChanged = {},
             onTranscriptionUpdate = {},
             language = "en",
             onLanguageChange = {},
