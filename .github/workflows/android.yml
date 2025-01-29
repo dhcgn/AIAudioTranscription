@@ -25,8 +25,11 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
 
+    - name: Build debug APK
+      run: ./gradlew assembleDebug
+
     - name: Build release APK
-      run: ./gradlew assembleDebug      
+      run: ./gradlew assembleRelease      
 
     - name: Upload release APK
       uses: actions/upload-artifact@v4
