@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -98,6 +100,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var fileProcessingManager: FileProcessingManager
     
+    // Add this property to store the last used URI
+    private var lastUsedUri: Uri? = null
+
     private val filePicker =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             uri?.let { handleFileUri(it) }
@@ -127,6 +132,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     MainContent(
                         onPickFile = { filePicker.launch("audio/*") },
+                        onRetry = { retryTranscription() },
                         transcription = transcriptionState.value,
                         processingState = processingState.value,
                         modifier = Modifier.padding(innerPadding),
@@ -160,6 +166,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleFileUri(uri: Uri) {
+        lastUsedUri = uri  // Store the URI when handling a file
         // Check if API key is set
         if (SharedPrefsUtils.getApiKey(this).isNullOrEmpty()) {
             Toast.makeText(this, "Please set your OpenAI API key in Settings first", Toast.LENGTH_LONG).show()
@@ -192,6 +199,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // Add this function to retry transcription
+    private fun retryTranscription() {
+        lastUsedUri?.let { handleFileUri(it) }
     }
 
     private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
@@ -324,6 +336,8 @@ fun AppTopBarPreview() {
 @Composable
 fun MainContent(
     onPickFile: () -> Unit,
+    // Add onRetry parameter
+    onRetry: () -> Unit,
     transcription: String,
     processingState: ProcessingState,
     modifier: Modifier = Modifier,
@@ -527,26 +541,41 @@ fun MainContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // First row - Main action button
-        Button(
-            onClick = onPickFile,
-            enabled = processingState == ProcessingState.Idle,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(56.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val buttonText = when (processingState) {
-                ProcessingState.Idle -> "Select File and Transcribe"
-                ProcessingState.CopyingMedia -> "Copying Media File..."
-                ProcessingState.RecodingToOpus -> "Re-encode to Opus..."
-                ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
-                ProcessingState.DownloadingResponse -> "Downloading Response..."
-                ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."
-                else -> {"Unknown State"}
+            Button(
+                onClick = onPickFile,
+                enabled = processingState == ProcessingState.Idle,
+                modifier = Modifier.weight(1f)
+            ) {
+                val buttonText = when (processingState) {
+                    ProcessingState.Idle -> "Select File and Transcribe"
+                    ProcessingState.CopyingMedia -> "Copying Media File..."
+                    ProcessingState.RecodingToOpus -> "Re-encode to Opus..."
+                    ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
+                    ProcessingState.DownloadingResponse -> "Downloading Response..."
+                    ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."
+                    else -> {"Unknown State"}
+                }
+                Text(
+                    buttonText,
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
-            Text(
-                buttonText,
-                style = MaterialTheme.typography.titleMedium
-            )
+
+            Button(
+                onClick = onRetry,
+                enabled = processingState == ProcessingState.Idle,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Retry transcription"
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -625,6 +654,7 @@ fun MainContentPreview() {
     AIAudioTranscriptionTheme {
         MainContent(
             onPickFile = {},
+            onRetry = {},
             transcription = "This is a sample transcription displayed in the preview.",
             processingState = ProcessingState.Idle,
             onCleanupRequest = { "" },
