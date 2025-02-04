@@ -605,10 +605,15 @@ fun MainContent(
                 enabled = processingState == ProcessingState.Idle,
                 modifier = Modifier.weight(1f)
             ) {
+                val selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
                 val buttonText = when (processingState) {
                     ProcessingState.Idle -> "Select File and Transcribe"
                     ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToOpus -> "Re-encode to Opus..."
+                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER) {
+                        "Re-encode to Opus..."
+                    } else {
+                        "Re-encode to MP3..."
+                    }
                     ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
                     ProcessingState.DownloadingResponse -> "Downloading Response..."
                     ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."
