@@ -68,11 +68,13 @@ fun SettingsScreen(
     var storedApiKey by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf("") }
     var cleanupPrompt by remember { mutableStateOf("") }
+    var selectedModel by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
         cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(context)
+        selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
     }
 
     Column(
@@ -139,6 +141,50 @@ fun SettingsScreen(
             }
             Text("Current API Key: $preview")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Transcription Model", style = MaterialTheme.typography.titleMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                RadioButton(
+                    selected = selectedModel == MODEL_WHISPER,
+                    onClick = { 
+                        selectedModel = MODEL_WHISPER
+                        SharedPrefsUtils.saveTranscriptionModel(context, MODEL_WHISPER)
+                    }
+                )
+                Text("Whisper-1")
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                RadioButton(
+                    selected = selectedModel == MODEL_GPT,
+                    onClick = { 
+                        selectedModel = MODEL_GPT
+                        SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT)
+                    }
+                )
+                Text("GPT-4 Audio")
+            }
+        }
+        Text(
+            text = when (selectedModel) {
+                MODEL_WHISPER -> "Traditional audio transcription model"
+                MODEL_GPT -> "New GPT-4 based model with better understanding"
+                else -> ""
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -214,4 +260,15 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> U
                 onResult("Error: ${t.message}")
             }
         })
+}
+
+// Add to SharedPrefsUtils object:
+fun SharedPrefsUtils.saveTranscriptionModel(context: Context, model: String) {
+    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    prefs.edit().putString("transcription_model", model).apply()
+}
+
+fun SharedPrefsUtils.getTranscriptionModel(context: Context): String? {
+    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    return prefs.getString("transcription_model", MODEL_WHISPER)
 }

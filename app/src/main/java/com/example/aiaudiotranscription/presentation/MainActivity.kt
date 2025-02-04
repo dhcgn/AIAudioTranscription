@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -57,7 +58,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import com.example.aiaudiotranscription.api.AudioChatRequest
+import com.example.aiaudiotranscription.api.AudioContent
+import com.example.aiaudiotranscription.api.AudioData
+import com.example.aiaudiotranscription.api.AudioMessage
 import com.example.aiaudiotranscription.api.ChatRequest
+import com.example.aiaudiotranscription.api.ChatResponse
 import com.example.aiaudiotranscription.api.Message
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.OpenAiApiService
@@ -79,6 +85,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
+import com.example.aiaudiotranscription.presentation.getTranscriptionModel
 import com.example.aiaudiotranscription.utils.FileProcessingException
 import com.example.aiaudiotranscription.utils.FileProcessingManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -207,64 +214,110 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
-        // Get current state values directly instead of using instance variables
         val currentLanguage = languageState.value
         val currentPrompt = promptState.value
+        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
 
         val retrofit = RetrofitClient.create(context)
         val openAiApiService = retrofit.create(OpenAiApiService::class.java)
 
         val file = File(filePath)
-        val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+        
+        if (selectedModel == MODEL_WHISPER) {
+            // Existing Whisper implementation
+            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+            val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.name, requestFile)
+                .addFormDataPart("model", MODEL_WHISPER)
+            
+            if (currentLanguage.length in 2..3) {
+                requestBodyBuilder.addFormDataPart("language", currentLanguage)
+            }
+            if (currentPrompt.isNotEmpty()) {
+                requestBodyBuilder.addFormDataPart("prompt", currentPrompt)
+            }
 
-        val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
-            .addFormDataPart("file", file.name, requestFile)
-            .addFormDataPart("model", MODEL_WHISPER)
+            openAiApiService.transcribeAudio(requestBodyBuilder.build())
+                .enqueue(object : Callback<WhisperResponse> {
+                    // ...existing callback implementation...
+                    override fun onResponse(
+                        call: Call<WhisperResponse>,
+                        response: Response<WhisperResponse>
+                    ) {
+                        processingState.value = ProcessingState.DownloadingResponse
+                        if (response.isSuccessful) {
+                            val transcriptionText = response.body()?.text ?: "No transcription found."
+                            // Save to history
+                            val dbHelper = TranscriptionDbHelper(context)
+                            dbHelper.addTranscription(
+                                TranscriptionEntry(
+                                    text = transcriptionText,
+                                    language = languageState.value,
+                                    prompt = promptState.value,
+                                    sourceHint = filePath
+                                )
+                            )
+                            onComplete(transcriptionText)
+                        } else {
+                            val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                            onComplete("Error: $errorBody")
+                        }
+                        processingState.value = ProcessingState.Idle
+                    }
 
-        if (currentLanguage.length in 2..3) {
-            requestBodyBuilder.addFormDataPart("language", currentLanguage)
-        }
-
-        if (currentPrompt.isNotEmpty()) {
-            requestBodyBuilder.addFormDataPart("prompt", currentPrompt)
-        }
-
-        val requestBody = requestBodyBuilder.build() // Build the request body
-
-        processingState.value = ProcessingState.UploadingToWhisper
-
-        openAiApiService.transcribeAudio(requestBody)
-            .enqueue(object : Callback<WhisperResponse> {
-                override fun onResponse(
-                    call: Call<WhisperResponse>,
-                    response: Response<WhisperResponse>
-                ) {
-                    processingState.value = ProcessingState.DownloadingResponse
-                    if (response.isSuccessful) {
-                        val transcriptionText = response.body()?.text ?: "No transcription found."
-                        // Save to history
-                        val dbHelper = TranscriptionDbHelper(context)
-                        dbHelper.addTranscription(
-                            TranscriptionEntry(
-                                text = transcriptionText,
-                                language = languageState.value,
-                                prompt = promptState.value,
-                                sourceHint = filePath
+                    override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
+                        onComplete("Error: ${t.message}")
+                        processingState.value = ProcessingState.Idle
+                    }
+                })
+        } else {
+            // New GPT-4 Audio implementation
+            val audioBytes = file.readBytes()
+            val base64Audio = Base64.encodeToString(audioBytes, Base64.NO_WRAP)
+            
+            val request = AudioChatRequest(
+                messages = listOf(
+                    AudioMessage(
+                        content = listOf(
+                            AudioContent.Text(text = currentPrompt.ifEmpty { "Transcribe this audio" }),
+                            AudioContent.Audio(
+                                input_audio = AudioData(
+                                    data = base64Audio,
+                                    format = file.extension.lowercase()
+                                )
                             )
                         )
-                        onComplete(transcriptionText)
-                    } else {
-                        val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                        onComplete("Error: $errorBody")
-                    }
-                    processingState.value = ProcessingState.Idle
-                }
+                    )
+                )
+            )
 
-                override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
-                    onComplete("Error: ${t.message}")
-                    processingState.value = ProcessingState.Idle
-                }
-            })
+            openAiApiService.transcribeAudioWithGPT(request)
+                .enqueue(object : Callback<ChatResponse> {
+                    override fun onResponse(call: Call<ChatResponse>, response: Response<ChatResponse>) {
+                        if (response.isSuccessful) {
+                            val transcriptionText = response.body()?.choices?.firstOrNull()?.message?.content
+                                ?: "No transcription found."
+                            // Save to history
+                            val dbHelper = TranscriptionDbHelper(context)
+                            dbHelper.addTranscription(
+                                TranscriptionEntry(
+                                    text = transcriptionText,
+                                    language = languageState.value,
+                                    prompt = promptState.value,
+                                    sourceHint = filePath
+                                )
+                            )
+                            onComplete(transcriptionText)
+                        } else {
+                            onComplete("Error: ${response.errorBody()?.string() ?: "Unknown error"}")
+                        }
+                    }
+
+                    override fun onFailure(call: Call<ChatResponse>, t: Throwable) {
+                        onComplete("Error: ${t.message}")
+                    }
+                })
+        }
     }
 
     private suspend fun cleanupWithAI(text: String): String {
