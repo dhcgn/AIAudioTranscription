@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.aiaudiotranscription.api.MODEL_GPT
+import com.example.aiaudiotranscription.api.MODEL_GPT_AUDIO
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.OpenAiApiService
@@ -66,7 +69,7 @@ fun SettingsScreen(
 ) {
     var apiKeyInput by remember { mutableStateOf("") }
     var storedApiKey by remember { mutableStateOf("") }
-    var testResult by remember { mutableStateOf("") }
+    var testResult by remember { mutableStateOf<List<ModelStatus>>(emptyList()) }
     var cleanupPrompt by remember { mutableStateOf("") }
     var selectedModel by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -129,7 +132,35 @@ fun SettingsScreen(
 
         if (testResult.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(testResult)
+            Text(
+                text = "API Key Test Results:",
+                style = MaterialTheme.typography.titleSmall
+            )
+            testResult.forEach { status ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (status.isAvailable) 
+                            Icons.Default.CheckCircle else Icons.Default.Cancel,
+                        contentDescription = if (status.isAvailable) "Available" else "Not Available",
+                        tint = if (status.isAvailable) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = status.modelName,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
 
         if (storedApiKey.isNotEmpty()) {
@@ -227,7 +258,12 @@ fun SettingsScreenPreview() {
     }
 }
 
-private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> Unit) {
+private data class ModelStatus(
+    val modelName: String,
+    val isAvailable: Boolean
+)
+
+private fun testApiKey(context: Context, apiKey: String, onResult: (List<ModelStatus>) -> Unit) {
     val retrofit = RetrofitClient.create(context)
     val openAiApiService = retrofit.create(OpenAiApiService::class.java)
 
@@ -239,25 +275,37 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> U
             ) {
                 if (response.isSuccessful) {
                     val models = response.body()?.data ?: emptyList()
-                    val whisperModel = models.find { it.id == MODEL_WHISPER }
-                    val gptModel = models.find { it.id == MODEL_GPT }
-                    when {
-                        whisperModel != null && gptModel != null -> 
-                            onResult("API Key is valid and has access to all required models.")
-                        whisperModel == null && gptModel == null ->
-                            onResult("API Key is valid but does not have access to required models ($MODEL_WHISPER and $MODEL_GPT).")
-                        whisperModel == null ->
-                            onResult("API Key is valid but does not have access to the model $MODEL_WHISPER.")
-                        gptModel == null ->
-                            onResult("API Key is valid but does not have access to the model $MODEL_GPT.")
-                    }
+                    val modelIds = models.map { it.id }
+                    
+                    val results = listOf(
+                        ModelStatus("API Connection", true),
+                        ModelStatus(
+                            "Whisper Model (${MODEL_WHISPER})", 
+                            modelIds.contains(MODEL_WHISPER)
+                        ),
+                        ModelStatus(
+                            "GPT Model (${MODEL_GPT})", 
+                            modelIds.contains(MODEL_GPT)
+                        ),
+                        ModelStatus(
+                            "GPT Audio Model (${MODEL_GPT_AUDIO})", 
+                            modelIds.contains(MODEL_GPT_AUDIO)
+                        )
+                    )
+                    onResult(results)
                 } else {
-                    onResult("Error: ${response.code()} - ${response.errorBody()?.string() ?: "No error body"}")
+                    onResult(listOf(ModelStatus(
+                        "API Connection Error: ${response.code()}", 
+                        false
+                    )))
                 }
             }
 
             override fun onFailure(call: Call<WhisperModelsResponse>, t: Throwable) {
-                onResult("Error: ${t.message}")
+                onResult(listOf(ModelStatus(
+                    "Connection Error: ${t.message}", 
+                    false
+                )))
             }
         })
 }
