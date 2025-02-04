@@ -271,20 +271,23 @@ class MainActivity : ComponentActivity() {
                     }
                 })
         } else {
-            // New GPT-4 Audio implementation
+            // GPT-4 Audio implementation
             val audioBytes = file.readBytes()
             val base64Audio = Base64.encodeToString(audioBytes, Base64.NO_WRAP)
-            var prompt = currentPrompt.ifEmpty { "Return only the content of this audio, be very exact what you return. Return only the content, nothing else." }
-
-            if (currentLanguage.length >= 2) {
-                prompt += "\n\nLanguage of the input is: $currentLanguage"
+            
+            // Build the complete prompt
+            val fullPrompt = buildString {
+                append(currentPrompt.ifEmpty { "Return only the content of this audio, be very exact what you return. Return only the content, nothing else." })
+                if (currentLanguage.length >= 2) {
+                    append("\n\nLanguage of the input audio is: $currentLanguage")
+                }
             }
 
             val request = AudioChatRequest(
                 messages = listOf(
                     AudioMessage(
                         content = listOf(
-                            AudioContent.Text(text = prompt),
+                            AudioContent.Text(text = fullPrompt),
                             AudioContent.Audio(
                                 input_audio = AudioData(
                                     data = base64Audio,
@@ -302,13 +305,13 @@ class MainActivity : ComponentActivity() {
                         if (response.isSuccessful) {
                             val transcriptionText = response.body()?.choices?.firstOrNull()?.message?.content
                                 ?: "No transcription found."
-                            // Save to history
+                            // Save to history with the full prompt that was actually used
                             val dbHelper = TranscriptionDbHelper(context)
                             dbHelper.addTranscription(
                                 TranscriptionEntry(
                                     text = transcriptionText,
                                     language = languageState.value,
-                                    prompt = promptState.value,
+                                    prompt = fullPrompt, // Use the actual prompt that was sent to the API
                                     sourceHint = filePath
                                 )
                             )
