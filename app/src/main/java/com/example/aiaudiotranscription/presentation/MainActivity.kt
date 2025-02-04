@@ -274,12 +274,17 @@ class MainActivity : ComponentActivity() {
             // New GPT-4 Audio implementation
             val audioBytes = file.readBytes()
             val base64Audio = Base64.encodeToString(audioBytes, Base64.NO_WRAP)
-            
+            var prompt = currentPrompt.ifEmpty { "Return only the content of this audio, be very exact what you return. Return only the content, nothing else." }
+
+            if (currentLanguage.length >= 2) {
+                prompt += "\n\nLanguage of the input is: $currentLanguage"
+            }
+
             val request = AudioChatRequest(
                 messages = listOf(
                     AudioMessage(
                         content = listOf(
-                            AudioContent.Text(text = currentPrompt.ifEmpty { "Transcribe this audio" }),
+                            AudioContent.Text(text = prompt),
                             AudioContent.Audio(
                                 input_audio = AudioData(
                                     data = base64Audio,
