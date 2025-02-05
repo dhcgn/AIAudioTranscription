@@ -23,6 +23,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import com.example.aiaudiotranscription.data.TranscriptionDbHelper
 import com.example.aiaudiotranscription.data.TranscriptionEntry
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
@@ -154,6 +157,7 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
     
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -175,22 +179,45 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                         maxLines = 3
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Language: ${entry.language}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Prompt: ${entry.prompt}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Source: ${entry.sourceHint}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Date: ${dateFormat.format(entry.timestamp)}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Make the text clickable
+                        Text(
+                            text = "Details",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .clickable { expanded = !expanded }
+                                .padding(vertical = 8.dp) // Add padding for better touch target
+                        )
+                        IconButton(onClick = { expanded = !expanded }) {
+                            Icon(
+                                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                contentDescription = if (expanded) "Show less" else "Show more"
+                            )
+                        }
+                    }
+                    
+                    if (expanded) {
+                        Text(
+                            text = "Language: ${entry.language}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Prompt: ${entry.prompt}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Source: ${entry.sourceHint}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Date: ${dateFormat.format(entry.timestamp)}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
 
                 Box {
@@ -218,6 +245,33 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                                 Icon(
                                     Icons.Default.Share,
                                     contentDescription = "Copy"
+                                )
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Copy with Details") },
+                            onClick = {
+                                showMenu = false
+                                val detailedText = buildString {
+                                    appendLine("Transcription:")
+                                    appendLine(entry.text)
+                                    appendLine()
+                                    appendLine("Details:")
+                                    appendLine("Language: ${entry.language}")
+                                    appendLine("Prompt: ${entry.prompt}")
+                                    appendLine("Source: ${entry.sourceHint}")
+                                    appendLine("Date: ${dateFormat.format(entry.timestamp)}")
+                                }
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Transcription with Details", detailedText)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Text with details copied to clipboard", Toast.LENGTH_SHORT).show()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Share,
+                                    contentDescription = "Copy with Details"
                                 )
                             }
                         )

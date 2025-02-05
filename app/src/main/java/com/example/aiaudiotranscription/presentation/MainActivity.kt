@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -57,7 +58,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import com.example.aiaudiotranscription.api.AudioChatRequest
+import com.example.aiaudiotranscription.api.AudioContent
+import com.example.aiaudiotranscription.api.AudioData
+import com.example.aiaudiotranscription.api.AudioMessage
 import com.example.aiaudiotranscription.api.ChatRequest
+import com.example.aiaudiotranscription.api.ChatResponse
 import com.example.aiaudiotranscription.api.Message
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.OpenAiApiService
@@ -79,6 +85,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
+import com.example.aiaudiotranscription.presentation.getTranscriptionModel
 import com.example.aiaudiotranscription.utils.FileProcessingException
 import com.example.aiaudiotranscription.utils.FileProcessingManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -117,9 +124,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Load saved language and prompt
-        languageState.value = SharedPrefsUtils.getLanguage(this) ?: ""
-        promptState.value = SharedPrefsUtils.getPrompt(this) ?: "voice message of one person"
+        // Load saved language and prompt - now without defaults
+        languageState.value = SharedPrefsUtils.getLanguage(this)
+        promptState.value = SharedPrefsUtils.getWhisperPrompt(this)
 
         // Handle shared media from external apps
         intent?.let { handleSharedIntent(it) }
@@ -207,64 +214,120 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
-        // Get current state values directly instead of using instance variables
         val currentLanguage = languageState.value
-        val currentPrompt = promptState.value
+        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
 
         val retrofit = RetrofitClient.create(context)
         val openAiApiService = retrofit.create(OpenAiApiService::class.java)
 
         val file = File(filePath)
-        val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+        
+        if (selectedModel == MODEL_WHISPER) {
+            // Existing Whisper implementation
+            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+            val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.name, requestFile)
+                .addFormDataPart("model", MODEL_WHISPER)
+            
+            if (currentLanguage.length in 2..3) {
+                requestBodyBuilder.addFormDataPart("language", currentLanguage)
+            }
 
-        val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
-            .addFormDataPart("file", file.name, requestFile)
-            .addFormDataPart("model", MODEL_WHISPER)
+            val whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
+            if (whisperPrompt.isNotEmpty()) {
+                requestBodyBuilder.addFormDataPart("prompt", whisperPrompt)
+            }
 
-        if (currentLanguage.length in 2..3) {
-            requestBodyBuilder.addFormDataPart("language", currentLanguage)
-        }
+            openAiApiService.transcribeAudio(requestBodyBuilder.build())
+                .enqueue(object : Callback<WhisperResponse> {
+                    // ...existing callback implementation...
+                    override fun onResponse(
+                        call: Call<WhisperResponse>,
+                        response: Response<WhisperResponse>
+                    ) {
+                        processingState.value = ProcessingState.DownloadingResponse
+                        if (response.isSuccessful) {
+                            val transcriptionText = response.body()?.text ?: "No transcription found."
+                            // Save to history
+                            val dbHelper = TranscriptionDbHelper(context)
+                            dbHelper.addTranscription(
+                                TranscriptionEntry(
+                                    text = transcriptionText,
+                                    language = languageState.value,
+                                    prompt = promptState.value,
+                                    sourceHint = filePath
+                                )
+                            )
+                            onComplete(transcriptionText)
+                        } else {
+                            val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                            onComplete("Error: $errorBody")
+                        }
+                        processingState.value = ProcessingState.Idle
+                    }
 
-        if (currentPrompt.isNotEmpty()) {
-            requestBodyBuilder.addFormDataPart("prompt", currentPrompt)
-        }
+                    override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
+                        onComplete("Error: ${t.message}")
+                        processingState.value = ProcessingState.Idle
+                    }
+                })
+        } else {
+            // GPT-4 Audio implementation
+            val audioBytes = file.readBytes()
+            val base64Audio = Base64.encodeToString(audioBytes, Base64.NO_WRAP)
+            
+            // Build the complete prompt using GPT prompt from SharedPrefs
+            val gptPrompt = SharedPrefsUtils.getGptPrompt(context)
+            val fullPrompt = buildString {
+                append(gptPrompt)
+                if (currentLanguage.length >= 2) {
+                    append("\n\nLanguage of the input audio is: $currentLanguage")
+                }
+            }
 
-        val requestBody = requestBodyBuilder.build() // Build the request body
-
-        processingState.value = ProcessingState.UploadingToWhisper
-
-        openAiApiService.transcribeAudio(requestBody)
-            .enqueue(object : Callback<WhisperResponse> {
-                override fun onResponse(
-                    call: Call<WhisperResponse>,
-                    response: Response<WhisperResponse>
-                ) {
-                    processingState.value = ProcessingState.DownloadingResponse
-                    if (response.isSuccessful) {
-                        val transcriptionText = response.body()?.text ?: "No transcription found."
-                        // Save to history
-                        val dbHelper = TranscriptionDbHelper(context)
-                        dbHelper.addTranscription(
-                            TranscriptionEntry(
-                                text = transcriptionText,
-                                language = languageState.value,
-                                prompt = promptState.value,
-                                sourceHint = filePath
+            val request = AudioChatRequest(
+                messages = listOf(
+                    AudioMessage(
+                        content = listOf(
+                            AudioContent.Text(text = fullPrompt),
+                            AudioContent.Audio(
+                                input_audio = AudioData(
+                                    data = base64Audio,
+                                    format = file.extension.lowercase()
+                                )
                             )
                         )
-                        onComplete(transcriptionText)
-                    } else {
-                        val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                        onComplete("Error: $errorBody")
-                    }
-                    processingState.value = ProcessingState.Idle
-                }
+                    )
+                )
+            )
 
-                override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
-                    onComplete("Error: ${t.message}")
-                    processingState.value = ProcessingState.Idle
-                }
-            })
+            openAiApiService.transcribeAudioWithGPT(request)
+                .enqueue(object : Callback<ChatResponse> {
+                    override fun onResponse(call: Call<ChatResponse>, response: Response<ChatResponse>) {
+                        if (response.isSuccessful) {
+                            val transcriptionText = response.body()?.choices?.firstOrNull()?.message?.content
+                                ?: "No transcription found."
+                            // Save to history with the full prompt that was actually used
+                            val dbHelper = TranscriptionDbHelper(context)
+                            dbHelper.addTranscription(
+                                TranscriptionEntry(
+                                    text = transcriptionText,
+                                    language = languageState.value,
+                                    prompt = fullPrompt, // Use the actual prompt that was sent to the API
+                                    sourceHint = filePath
+                                )
+                            )
+                            onComplete(transcriptionText)
+                        } else {
+                            onComplete("Error: ${response.errorBody()?.string() ?: "Unknown error"}")
+                        }
+                    }
+
+                    override fun onFailure(call: Call<ChatResponse>, t: Throwable) {
+                        onComplete("Error: ${t.message}")
+                    }
+                })
+        }
     }
 
     private suspend fun cleanupWithAI(text: String): String {
@@ -313,7 +376,7 @@ fun AppTopBar() {
                     "AI Transcription",
                 )
                 Text(
-                    "Transcribe voice message or other media files to text with the help of OpenAI's Whisper API",
+                    "Transcribe media files with the help of OpenAI's Whisper API or GPT-4o",
                     style = MaterialTheme.typography.bodyMedium,
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                     modifier = Modifier.padding(end = 50.dp)
@@ -347,11 +410,9 @@ fun MainContent(
     language: String,
     onLanguageChange: (String) -> Unit,
     prompt: String,
-    onPromptChange: (String) -> Unit,
-    previewExpanded: Boolean = false // New parameter for preview
+    onPromptChange: (String) -> Unit
 ) {
     var isApiKeySet by remember { mutableStateOf(false) }
-    var isExpanded by remember { mutableStateOf(previewExpanded) } // Use preview value as initial state
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -478,68 +539,6 @@ fun MainContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Parameters Grid in Expandable Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { isExpanded = !isExpanded }
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Transcription Parameters",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand"
-                    )
-                }
-
-                if (isExpanded) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = language,
-                        onValueChange = {
-                            onLanguageChange(it)
-                            SharedPrefsUtils.saveLanguage(context, it)
-                        },
-                        label = { Text("Pinned Language (ISO 639 like en, de, fr, ..)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        maxLines = 1
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = prompt,
-                        onValueChange = {
-                            onPromptChange(it)
-                            SharedPrefsUtils.savePrompt(context, it)
-                        },
-                        label = { Text("Prompt for transcription") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = isApiKeySet,
-                            onCheckedChange = null // Read-only checkbox
-                        )
-                        Text("OpenAI API Key is set")
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         // First row - Main action button
         Row(
             modifier = Modifier
@@ -552,10 +551,15 @@ fun MainContent(
                 enabled = processingState == ProcessingState.Idle,
                 modifier = Modifier.weight(1f)
             ) {
+                val selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
                 val buttonText = when (processingState) {
                     ProcessingState.Idle -> "Select File and Transcribe"
                     ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToOpus -> "Re-encode to Opus..."
+                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER) {
+                        "Re-encode to Opus..."
+                    } else {
+                        "Re-encode to MP3..."
+                    }
                     ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
                     ProcessingState.DownloadingResponse -> "Downloading Response..."
                     ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."
@@ -616,38 +620,6 @@ fun MainContent(
     }
 }
 
-object SharedPrefsUtils {
-    fun saveApiKey(context: Context, apiKey: String) {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("api_key", apiKey).apply()
-    }
-
-    fun getApiKey(context: Context): String? {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("api_key", null)
-    }
-
-    fun saveLanguage(context: Context, language: String) {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("language", language).apply()
-    }
-
-    fun getLanguage(context: Context): String? {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("language", null)
-    }
-
-    fun savePrompt(context: Context, prompt: String) {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("prompt", prompt).apply()
-    }
-
-    fun getPrompt(context: Context): String? {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("prompt", null)
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun MainContentPreview() {
@@ -663,8 +635,7 @@ fun MainContentPreview() {
             language = "en",
             onLanguageChange = {},
             prompt = "voice message of one person",
-            onPromptChange = {},
-            previewExpanded = true // Set expanded state for preview
+            onPromptChange = {}
         )
     }
 }

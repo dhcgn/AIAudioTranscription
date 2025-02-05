@@ -5,11 +5,14 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.aiaudiotranscription.api.MODEL_GPT
+import com.example.aiaudiotranscription.api.MODEL_GPT_AUDIO
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.OpenAiApiService
@@ -66,13 +70,21 @@ fun SettingsScreen(
 ) {
     var apiKeyInput by remember { mutableStateOf("") }
     var storedApiKey by remember { mutableStateOf("") }
-    var testResult by remember { mutableStateOf("") }
+    var testResult by remember { mutableStateOf<List<ModelStatus>>(emptyList()) }
     var cleanupPrompt by remember { mutableStateOf("") }
+    var selectedModel by remember { mutableStateOf("") }
+    var language by remember { mutableStateOf("") }
+    var whisperPrompt by remember { mutableStateOf("") }
+    var gptPrompt by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
         cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(context)
+        selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
+        language = SharedPrefsUtils.getLanguage(context)
+        whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
+        gptPrompt = SharedPrefsUtils.getGptPrompt(context)
     }
 
     Column(
@@ -127,7 +139,35 @@ fun SettingsScreen(
 
         if (testResult.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(testResult)
+            Text(
+                text = "API Key Test Results:",
+                style = MaterialTheme.typography.titleSmall
+            )
+            testResult.forEach { status ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (status.isAvailable) 
+                            Icons.Default.CheckCircle else Icons.Default.Cancel,
+                        contentDescription = if (status.isAvailable) "Available" else "Not Available",
+                        tint = if (status.isAvailable) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = status.modelName,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
 
         if (storedApiKey.isNotEmpty()) {
@@ -141,8 +181,89 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Used Transcription Model", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Whisper-1 is the Open Source version large-v2 of whisper, file will be transcode to opus. " +
+                    "GPT-4o is a multi-modal LLM and can also transcribe audio, file will be transcode to mp3 ",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        onClick = { 
+                            selectedModel = MODEL_WHISPER
+                            SharedPrefsUtils.saveTranscriptionModel(context, MODEL_WHISPER)
+                        }
+                    )
+            ) {
+                RadioButton(
+                    selected = selectedModel == MODEL_WHISPER,
+                    onClick = { 
+                        selectedModel = MODEL_WHISPER
+                        SharedPrefsUtils.saveTranscriptionModel(context, MODEL_WHISPER)
+                    }
+                )
+                Text(
+                    text = "Whisper-1",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        onClick = { 
+                            selectedModel = MODEL_GPT
+                            SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT)
+                        }
+                    )
+            ) {
+                RadioButton(
+                    selected = selectedModel == MODEL_GPT,
+                    onClick = { 
+                        selectedModel = MODEL_GPT
+                        SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT)
+                    }
+                )
+                Text(
+                    text = "GPT-4o Audio",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        }
+        Text(
+            text = when (selectedModel) {
+                MODEL_WHISPER -> "Traditional audio transcription model"
+                MODEL_GPT -> "New GPT-4 based model with better understanding"
+                else -> ""
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
         
         // Cleanup prompt section with reset button underneath
+        Text("AI Cleanup Prompt", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "This prompt is only for the action to clean up the transcript for better " +
+                    "readability and with maintain in content.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = cleanupPrompt,
             onValueChange = { 
@@ -166,7 +287,137 @@ fun SettingsScreen(
             Text("Reset to Default")
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text("Language Settings for transcription", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "If not set Whisper's auto-\"language identification\" will try to figure the language out." +
+                    "In the most cases this works perfect, but in edge cases it is helpfull to set the language manually.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = language,
+            onValueChange = { language = it },
+            label = { Text("Pinned Language (ISO 639 like en, de, fr, ...)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = {
+                    SharedPrefsUtils.saveLanguage(context, language)
+                    Toast.makeText(context, "Language saved", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("Save")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    language = ""
+                    SharedPrefsUtils.saveLanguage(context, "")
+                    Toast.makeText(context, "Language reset", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("Reset")
+            }
+        }
 
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text("Whisper-1 Prompt", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "You can use a prompt to improve the quality of the transcripts generated by the Whisper API. " +
+                "The model tries to match the style of the prompt, so it's more likely to use capitalization and " +
+                "punctuation if the prompt does too. However, the current prompting system is more limited than our " +
+                "other language models and provides limited control over the generated audio. This prompt is limited to 224 token, " +
+                "the model only considers the final 224 tokens of the prompt and ignores anything earlier.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = whisperPrompt,
+            onValueChange = { whisperPrompt = it },
+            label = { Text("Prompt for Whisper-1") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = {
+                    SharedPrefsUtils.saveWhisperPrompt(context, whisperPrompt)
+                    Toast.makeText(context, "Whisper prompt saved", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("Save")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    whisperPrompt = SharedPrefsUtils.DEFAULT_WHISPER_PROMPT
+                    SharedPrefsUtils.saveWhisperPrompt(context, SharedPrefsUtils.DEFAULT_WHISPER_PROMPT)
+                    Toast.makeText(context, "Whisper prompt reset", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("Reset")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text("GPT-4 Audio Prompt", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "The used GPT-4o audio model is the same as the realtime models, but not optimized to low latency. " +
+                    "The used mode it \"text + audio in -> text out\". Be carefull with the prompt, this model purpose " +
+                    "it not transcription, so the prompt must be very clear to transcribe the audio.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = gptPrompt,
+            onValueChange = { gptPrompt = it },
+            label = { Text("Prompt for GPT-4 Audio") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = {
+                    SharedPrefsUtils.saveGptPrompt(context, gptPrompt)
+                    Toast.makeText(context, "GPT prompt saved", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("Save")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    gptPrompt = SharedPrefsUtils.DEFAULT_GPT_PROMPT
+                    SharedPrefsUtils.saveGptPrompt(context, SharedPrefsUtils.DEFAULT_GPT_PROMPT)
+                    Toast.makeText(context, "GPT prompt reset", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("Reset")
+            }
+        }
     }
 }
 
@@ -181,7 +432,12 @@ fun SettingsScreenPreview() {
     }
 }
 
-private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> Unit) {
+private data class ModelStatus(
+    val modelName: String,
+    val isAvailable: Boolean
+)
+
+private fun testApiKey(context: Context, apiKey: String, onResult: (List<ModelStatus>) -> Unit) {
     val retrofit = RetrofitClient.create(context)
     val openAiApiService = retrofit.create(OpenAiApiService::class.java)
 
@@ -193,25 +449,48 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (String) -> U
             ) {
                 if (response.isSuccessful) {
                     val models = response.body()?.data ?: emptyList()
-                    val whisperModel = models.find { it.id == MODEL_WHISPER }
-                    val gptModel = models.find { it.id == MODEL_GPT }
-                    when {
-                        whisperModel != null && gptModel != null -> 
-                            onResult("API Key is valid and has access to all required models.")
-                        whisperModel == null && gptModel == null ->
-                            onResult("API Key is valid but does not have access to required models ($MODEL_WHISPER and $MODEL_GPT).")
-                        whisperModel == null ->
-                            onResult("API Key is valid but does not have access to the model $MODEL_WHISPER.")
-                        gptModel == null ->
-                            onResult("API Key is valid but does not have access to the model $MODEL_GPT.")
-                    }
+                    val modelIds = models.map { it.id }
+                    
+                    val results = listOf(
+                        ModelStatus("API Connection", true),
+                        ModelStatus(
+                            "Whisper Model (${MODEL_WHISPER})", 
+                            modelIds.contains(MODEL_WHISPER)
+                        ),
+                        ModelStatus(
+                            "GPT Model (${MODEL_GPT})", 
+                            modelIds.contains(MODEL_GPT)
+                        ),
+                        ModelStatus(
+                            "GPT Audio Model (${MODEL_GPT_AUDIO})", 
+                            modelIds.contains(MODEL_GPT_AUDIO)
+                        )
+                    )
+                    onResult(results)
                 } else {
-                    onResult("Error: ${response.code()} - ${response.errorBody()?.string() ?: "No error body"}")
+                    onResult(listOf(ModelStatus(
+                        "API Connection Error: ${response.code()}", 
+                        false
+                    )))
                 }
             }
 
             override fun onFailure(call: Call<WhisperModelsResponse>, t: Throwable) {
-                onResult("Error: ${t.message}")
+                onResult(listOf(ModelStatus(
+                    "Connection Error: ${t.message}", 
+                    false
+                )))
             }
         })
+}
+
+// Add to SharedPrefsUtils object:
+fun SharedPrefsUtils.saveTranscriptionModel(context: Context, model: String) {
+    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    prefs.edit().putString("transcription_model", model).apply()
+}
+
+fun SharedPrefsUtils.getTranscriptionModel(context: Context): String? {
+    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    return prefs.getString("transcription_model", MODEL_WHISPER)
 }
