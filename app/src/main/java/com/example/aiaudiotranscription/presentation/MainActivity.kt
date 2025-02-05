@@ -124,9 +124,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Load saved language and prompt
-        languageState.value = SharedPrefsUtils.getLanguage(this) ?: ""
-        promptState.value = SharedPrefsUtils.getPrompt(this) ?: "voice message of one person"
+        // Load saved language and prompt - now without defaults
+        languageState.value = SharedPrefsUtils.getLanguage(this)
+        promptState.value = SharedPrefsUtils.getWhisperPrompt(this)
 
         // Handle shared media from external apps
         intent?.let { handleSharedIntent(it) }
@@ -215,8 +215,7 @@ class MainActivity : ComponentActivity() {
 
     private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
         val currentLanguage = languageState.value
-        val currentPrompt = promptState.value
-        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
+        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
 
         val retrofit = RetrofitClient.create(context)
         val openAiApiService = retrofit.create(OpenAiApiService::class.java)
@@ -233,8 +232,10 @@ class MainActivity : ComponentActivity() {
             if (currentLanguage.length in 2..3) {
                 requestBodyBuilder.addFormDataPart("language", currentLanguage)
             }
-            if (currentPrompt.isNotEmpty()) {
-                requestBodyBuilder.addFormDataPart("prompt", currentPrompt)
+
+            val whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
+            if (whisperPrompt.isNotEmpty()) {
+                requestBodyBuilder.addFormDataPart("prompt", whisperPrompt)
             }
 
             openAiApiService.transcribeAudio(requestBodyBuilder.build())
@@ -275,9 +276,10 @@ class MainActivity : ComponentActivity() {
             val audioBytes = file.readBytes()
             val base64Audio = Base64.encodeToString(audioBytes, Base64.NO_WRAP)
             
-            // Build the complete prompt
+            // Build the complete prompt using GPT prompt from SharedPrefs
+            val gptPrompt = SharedPrefsUtils.getGptPrompt(context)
             val fullPrompt = buildString {
-                append(currentPrompt.ifEmpty { "Return only the content of this audio, be very exact what you return. Return only the content, nothing else." })
+                append(gptPrompt)
                 if (currentLanguage.length >= 2) {
                     append("\n\nLanguage of the input audio is: $currentLanguage")
                 }
@@ -408,11 +410,9 @@ fun MainContent(
     language: String,
     onLanguageChange: (String) -> Unit,
     prompt: String,
-    onPromptChange: (String) -> Unit,
-    previewExpanded: Boolean = false // New parameter for preview
+    onPromptChange: (String) -> Unit
 ) {
     var isApiKeySet by remember { mutableStateOf(false) }
-    var isExpanded by remember { mutableStateOf(previewExpanded) } // Use preview value as initial state
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -539,68 +539,6 @@ fun MainContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Parameters Grid in Expandable Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { isExpanded = !isExpanded }
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Transcription Parameters",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand"
-                    )
-                }
-
-                if (isExpanded) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = language,
-                        onValueChange = {
-                            onLanguageChange(it)
-                            SharedPrefsUtils.saveLanguage(context, it)
-                        },
-                        label = { Text("Pinned Language (ISO 639 like en, de, fr, ..)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        maxLines = 1
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = prompt,
-                        onValueChange = {
-                            onPromptChange(it)
-                            SharedPrefsUtils.savePrompt(context, it)
-                        },
-                        label = { Text("Prompt for transcription") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = isApiKeySet,
-                            onCheckedChange = null // Read-only checkbox
-                        )
-                        Text("OpenAI API Key is set")
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         // First row - Main action button
         Row(
             modifier = Modifier
@@ -682,38 +620,6 @@ fun MainContent(
     }
 }
 
-object SharedPrefsUtils {
-    fun saveApiKey(context: Context, apiKey: String) {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("api_key", apiKey).apply()
-    }
-
-    fun getApiKey(context: Context): String? {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("api_key", null)
-    }
-
-    fun saveLanguage(context: Context, language: String) {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("language", language).apply()
-    }
-
-    fun getLanguage(context: Context): String? {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("language", null)
-    }
-
-    fun savePrompt(context: Context, prompt: String) {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("prompt", prompt).apply()
-    }
-
-    fun getPrompt(context: Context): String? {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return prefs.getString("prompt", null)
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun MainContentPreview() {
@@ -729,8 +635,7 @@ fun MainContentPreview() {
             language = "en",
             onLanguageChange = {},
             prompt = "voice message of one person",
-            onPromptChange = {},
-            previewExpanded = true // Set expanded state for preview
+            onPromptChange = {}
         )
     }
 }
