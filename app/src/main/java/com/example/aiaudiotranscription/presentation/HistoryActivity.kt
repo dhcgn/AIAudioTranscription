@@ -250,6 +250,33 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                         )
 
                         DropdownMenuItem(
+                            text = { Text("Copy with Details") },
+                            onClick = {
+                                showMenu = false
+                                val detailedText = buildString {
+                                    appendLine("Transcription:")
+                                    appendLine(entry.text)
+                                    appendLine()
+                                    appendLine("Details:")
+                                    appendLine("Language: ${entry.language}")
+                                    appendLine("Prompt: ${entry.prompt}")
+                                    appendLine("Source: ${entry.sourceHint}")
+                                    appendLine("Date: ${dateFormat.format(entry.timestamp)}")
+                                }
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Transcription with Details", detailedText)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Text with details copied to clipboard", Toast.LENGTH_SHORT).show()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Share,
+                                    contentDescription = "Copy with Details"
+                                )
+                            }
+                        )
+
+                        DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = {
                                 showMenu = false

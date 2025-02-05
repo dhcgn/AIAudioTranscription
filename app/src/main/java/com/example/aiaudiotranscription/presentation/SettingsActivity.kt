@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -80,10 +81,10 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
         cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(context)
-        selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
-        language = SharedPrefsUtils.getLanguage(context) ?: ""
-        whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context) ?: DEFAULT_WHISPER_PROMPT
-        gptPrompt = SharedPrefsUtils.getGptPrompt(context) ?: DEFAULT_GPT_PROMPT
+        selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
+        language = SharedPrefsUtils.getLanguage(context)
+        whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
+        gptPrompt = SharedPrefsUtils.getGptPrompt(context)
     }
 
     Column(
@@ -196,7 +197,14 @@ fun SettingsScreen(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        onClick = { 
+                            selectedModel = MODEL_WHISPER
+                            SharedPrefsUtils.saveTranscriptionModel(context, MODEL_WHISPER)
+                        }
+                    )
             ) {
                 RadioButton(
                     selected = selectedModel == MODEL_WHISPER,
@@ -205,11 +213,21 @@ fun SettingsScreen(
                         SharedPrefsUtils.saveTranscriptionModel(context, MODEL_WHISPER)
                     }
                 )
-                Text("Whisper-1")
+                Text(
+                    text = "Whisper-1",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        onClick = { 
+                            selectedModel = MODEL_GPT
+                            SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT)
+                        }
+                    )
             ) {
                 RadioButton(
                     selected = selectedModel == MODEL_GPT,
@@ -218,7 +236,10 @@ fun SettingsScreen(
                         SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT)
                     }
                 )
-                Text("GPT-4o Audio")
+                Text(
+                    text = "GPT-4o Audio",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
             }
         }
         Text(
@@ -269,6 +290,13 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(24.dp))
         
         Text("Language Settings for transcription", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "If not set Whisper's auto-\"language identification\" will try to figure the language out." +
+                    "In the most cases this works perfect, but in edge cases it is helpfull to set the language manually.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = language,
@@ -338,8 +366,8 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    whisperPrompt = DEFAULT_WHISPER_PROMPT
-                    SharedPrefsUtils.saveWhisperPrompt(context, DEFAULT_WHISPER_PROMPT)
+                    whisperPrompt = SharedPrefsUtils.DEFAULT_WHISPER_PROMPT
+                    SharedPrefsUtils.saveWhisperPrompt(context, SharedPrefsUtils.DEFAULT_WHISPER_PROMPT)
                     Toast.makeText(context, "Whisper prompt reset", Toast.LENGTH_SHORT).show()
                 }
             ) {
@@ -382,8 +410,8 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    gptPrompt = DEFAULT_GPT_PROMPT
-                    SharedPrefsUtils.saveGptPrompt(context, DEFAULT_GPT_PROMPT)
+                    gptPrompt = SharedPrefsUtils.DEFAULT_GPT_PROMPT
+                    SharedPrefsUtils.saveGptPrompt(context, SharedPrefsUtils.DEFAULT_GPT_PROMPT)
                     Toast.makeText(context, "GPT prompt reset", Toast.LENGTH_SHORT).show()
                 }
             ) {
@@ -465,29 +493,4 @@ fun SharedPrefsUtils.saveTranscriptionModel(context: Context, model: String) {
 fun SharedPrefsUtils.getTranscriptionModel(context: Context): String? {
     val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
     return prefs.getString("transcription_model", MODEL_WHISPER)
-}
-
-// Add at the top of the file with other constants
-private const val DEFAULT_WHISPER_PROMPT = "voice message of one person"
-private const val DEFAULT_GPT_PROMPT = "Return only the content of this audio, be very exact what you return. Return only the content, nothing else."
-
-// Add to SharedPrefsUtils object:
-fun SharedPrefsUtils.saveWhisperPrompt(context: Context, prompt: String) {
-    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-    prefs.edit().putString("whisper_prompt", prompt).apply()
-}
-
-fun SharedPrefsUtils.getWhisperPrompt(context: Context): String? {
-    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-    return prefs.getString("whisper_prompt", DEFAULT_WHISPER_PROMPT)
-}
-
-fun SharedPrefsUtils.saveGptPrompt(context: Context, prompt: String) {
-    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-    prefs.edit().putString("gpt_prompt", prompt).apply()
-}
-
-fun SharedPrefsUtils.getGptPrompt(context: Context): String? {
-    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-    return prefs.getString("gpt_prompt", DEFAULT_GPT_PROMPT)
 }

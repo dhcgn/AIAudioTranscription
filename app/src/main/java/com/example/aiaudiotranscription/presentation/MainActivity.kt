@@ -376,7 +376,7 @@ fun AppTopBar() {
                     "AI Transcription",
                 )
                 Text(
-                    "Transcribe voice message or other media files to text with the help of OpenAI's Whisper API",
+                    "Transcribe media files with the help of OpenAI's Whisper API or GPT-4o",
                     style = MaterialTheme.typography.bodyMedium,
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                     modifier = Modifier.padding(end = 50.dp)

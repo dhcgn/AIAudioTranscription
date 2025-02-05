@@ -18,7 +18,12 @@ object SharedPrefsUtils {
 
     // Default Values
     const val DEFAULT_WHISPER_PROMPT = "voice message of one person"
-    const val DEFAULT_GPT_PROMPT = "Return only the content of this audio, be very exact what you return. Return only the content, nothing else."
+    const val DEFAULT_GPT_PROMPT =
+        """Transcribe the audio exactly as spoken, capturing every word with precision.
+When words are unclear, make well-educated guesses based on context and language.
+If an ISO 639 language code is provided, ensure the transcription respects the specified language. If not, keep the language of the transcribe the same as of the audio.
+Return only the transcription — no additional commentary, explanations, or extraneous text."""
+
     const val DEFAULT_CLEANUP_PROMPT = """This is a transcript of a voice message, help to enhanced the readability.
 
 - enhanced the readability by adding punctuation, capitalization and paragraphs.
