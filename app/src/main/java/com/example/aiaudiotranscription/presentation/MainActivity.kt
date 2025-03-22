@@ -604,7 +604,7 @@ fun MainContent(
                 val buttonText = when (processingState) {
                     ProcessingState.Idle -> "Select File and Transcribe"
                     ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER) {
+                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER || selectedModel == MODEL_GPT_4O_TRANSCRIBE) {
                         "Re-encode to Opus..."
                     } else {
                         "Re-encode to MP3..."

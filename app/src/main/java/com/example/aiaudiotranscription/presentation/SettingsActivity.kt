@@ -192,14 +192,14 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable(
                         onClick = { 
                             selectedModel = MODEL_WHISPER
@@ -222,7 +222,7 @@ fun SettingsScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable(
                         onClick = { 
                             selectedModel = MODEL_GPT
@@ -245,7 +245,7 @@ fun SettingsScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable(
                         onClick = { 
                             selectedModel = MODEL_GPT_4O_TRANSCRIBE
