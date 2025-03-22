@@ -1,311 +1,91 @@
-This Android App has the propose of helping with audio transcription.
+# Copilot Instructions for AI Assistance in the AI Transcription App
 
-## Developer Background
+This document provides essential guidelines and context for AIs helping with this project. Follow these instructions to ensure that code modifications align with the project’s design, security, and maintainability goals.
 
-- Developer is not familiar with Android development
-- Developer is not familiar with Java or Kotlin, but with C# and Go
+---
 
-## Use Case
+## Project Overview
+- **Purpose:**  
+  Transcribe media files (audio/video) using OpenAI’s Whisper API and GPT-4o-based models with additional AI-powered text cleanup.
+- **Key Features:**  
+  - File selection (including sharing intents)  
+  - Audio processing (conversion via FFmpegKit to opus or mp3)  
+  - Transcription using multiple models  
+  - Local transcription history storage  
+  - Secure API key management via EncryptedSharedPreferences  
+  - Settings for language, prompts, and transcription models
 
-Precondition: API Key for transcription service is stored
+---
 
-1. User selects or share a media file to transcribe
-2. App sends the media file to a transcription service (e.g. OpenAI API to model whisper-1)
-3. App displays the transcription result
+## Technical Guidelines
 
-## Main Features
+### Architecture & Dependency Management
+- **Dependency Injection:**  
+  Use Hilt to inject dependencies (Retrofit service, database helper, file processing manager) rather than creating instances manually.
+- **UI State Management:**  
+  Prefer using a ViewModel to hold UI state and business logic rather than managing mutable state directly in Activities.
+- **Networking & Concurrency:**  
+  Use Retrofit’s coroutine support (suspend functions) for cleaner asynchronous code. Ensure all UI updates from background threads are dispatched on the main thread.
+- **Database:**  
+  Consider migrating from SQLiteOpenHelper to Room for better type safety, maintainability, and coroutine support.
 
-- Pick a media file to transcribe
-- Share a media file to transcribe
+### Code Quality & Maintainability
+- **Reduce Duplication:**  
+  Consolidate similar code paths (e.g., handling different transcription models) into shared helper methods.
+- **Gradle Scripts:**  
+  Consolidate dependency declarations to minimize duplication and improve readability.
+- **Logging:**  
+  Use logging interceptors only for debugging. Remove or disable sensitive logging in production builds.
 
-### Open Features
+### File Handling & Error Management
+- **Unique File Names:**  
+  When processing audio files, avoid hardcoding output file names. Use unique or temporary file names to prevent conflicts.
+- **Error Propagation:**  
+  Handle errors gracefully. For example, if the API key is missing or an FFmpeg command fails, notify the user instead of crashing.
+- **Threading:**  
+  Ensure background operations (file processing, network calls) run on appropriate threads, and any UI updates are posted on the main thread.
 
-- [ ] Separate Settings/Configuration View
-- [ ] History View with used parameters and source hint
-- [ ] Make OpenAI API Key testable for working with the app (test access to model whisper-1)
-- [ ] Allow to select from storage or share video files which are then converted to audio files for transcription
-- [ ] Add custom App Icon
-- [ ] Make text in transcription selectable with "copy all to clipboard" 
-- [ ] Additional CleanUp Prompt for more context
-- [ ] Retry button, for testing parameters changes
-- [ ] Add a progress bar for the transcription process
-- [ ] About Page with help
+### Security & Permissions
+- **Sensitive Data:**  
+  Store API keys securely using EncryptedSharedPreferences. Avoid printing or logging sensitive information.
+- **Storage Permissions:**  
+  Reevaluate the use of legacy external storage permissions (e.g., WRITE_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE). Consider modern scoped storage (MediaStore) to improve security and compatibility.
 
+---
 
-## Technical Details
+## What to Avoid
+- **Hardcoding Sensitive Data:**  
+  Never hardcode API keys or secrets in the code.
+- **Redundant Dependency Initialization:**  
+  Do not instantiate dependencies manually when they can be injected via Hilt.
+- **Duplicated Logic:**  
+  Avoid duplicate implementations for similar features (e.g., transcription model handling). Instead, extract common functionality.
+- **Excessive Logging in Production:**  
+  Ensure sensitive information is not logged, and disable debug logging in release builds.
+- **Using Outdated Storage Permissions:**  
+  Replace legacy storage permissions with modern, scoped approaches wherever possible.
 
-- using **encrypted** storage for API Key
-- re-encode media file with **ffmpeg** to opus with focus a low bitrate but good enough quality for transcription
-  - `ffmpeg -i audio.mp3 -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip audio.ogg` 
-- Source code is available on GitHub, so no sensitive information is allowed to be hardcoded
-- Test working OpenAI Key with: `curl https://api.openai.com/v1/models   -H "Authorization: Bearer $OPENAI_API_KEY" | jq '.data[] | select(.id == "whisper-1")'` 
+---
 
-### OpenAI API for transcription
+## Best Practices
+- Write idiomatic Kotlin and follow Android’s modern architecture patterns (e.g., MVVM, Jetpack Compose).
+- Leverage coroutines and Retrofit’s suspend functions for network operations.
+- Keep the UI responsive by offloading heavy operations (like file processing and network requests) to background threads.
+- Ensure meaningful error messages and graceful failure states for a better user experience.
+- Document functions clearly and maintain consistency in coding style.
 
-Create transcription
-post
- 
-https://api.openai.com/v1/audio/transcriptions
-Transcribes audio into the input language.
+---
 
-Request body
-file
-file
+## Project-Specific Tips
+- **Transcription Models:**  
+  Validate that the correct media type and encoding are used for each transcription model (e.g., Whisper vs. GPT-4o variants).
+- **FFmpeg Commands:**  
+  Carefully handle the FFmpeg command outputs and always clean up temporary files on errors.
+- **Settings & Preferences:**  
+  Make sure all user settings (API key, language, prompts, model selection) are saved and retrieved correctly.
+- **Testing:**  
+  Ensure comprehensive unit and instrumented tests are written to cover key functionalities.
 
-Required
-The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
+---
 
-model
-string
-
-Required
-ID of the model to use. Only whisper-1 (which is powered by our open source Whisper V2 model) is currently available.
-
-language
-string
-
-Optional
-The language of the input audio. Supplying the input language in ISO-639-1 (e.g. en or de) format will improve accuracy and latency.
-
-prompt
-string
-
-Optional
-An optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
-
-response_format
-string
-
-Optional
-Defaults to json
-The format of the output, in one of these options: json, text, srt, verbose_json, or vtt.
-
-temperature
-number
-
-Optional
-Defaults to 0
-The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. If set to 0, the model will use log probability to automatically increase the temperature until certain thresholds are hit.
-
-timestamp_granularities[]
-array
-
-Optional
-Defaults to segment
-The timestamp granularities to populate for this transcription. response_format must be set verbose_json to use timestamp granularities. Either or both of these options are supported: word, or segment. Note: There is no additional latency for segment timestamps, but generating word timestamps incurs additional latency.
-
-#### Sample Curl Command
-
-```bash
-curl --request POST \
-  --url https://api.openai.com/v1/audio/transcriptions \
-  --header "Authorization: Bearer $OPENAI_API_KEY" \
-  --header 'Content-Type: multipart/form-data' \
-  --form file=@/path/to/file/audio.mp3 \
-  --form model=whisper-1
-```
-
-#### OpenAPI Specification for OpenAI API for transcription
-
-```yaml
-  /audio/transcriptions:
-    post:
-      operationId: createTranscription
-      tags:
-        - Audio
-      summary: Transcribes audio into the input language.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: "#/components/schemas/CreateTranscriptionRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - $ref: "#/components/schemas/CreateTranscriptionResponseJson"
-                  - $ref: "#/components/schemas/CreateTranscriptionResponseVerboseJson"
-      x-oaiMeta:
-        name: Create transcription
-        group: audio
-        returns: The [transcription object](/docs/api-reference/audio/json-object) or a
-          [verbose transcription
-          object](/docs/api-reference/audio/verbose-json-object).
-        examples:
-          - title: Default
-            request:
-              curl: |
-                curl https://api.openai.com/v1/audio/transcriptions \
-                  -H "Authorization: Bearer $OPENAI_API_KEY" \
-                  -H "Content-Type: multipart/form-data" \
-                  -F file="@/path/to/file/audio.mp3" \
-                  -F model="whisper-1"
-              python: |
-                from openai import OpenAI
-                client = OpenAI()
-
-                audio_file = open("speech.mp3", "rb")
-                transcript = client.audio.transcriptions.create(
-                  model="whisper-1",
-                  file=audio_file
-                )
-              node: >
-                import fs from "fs";
-
-                import OpenAI from "openai";
-
-
-                const openai = new OpenAI();
-
-
-                async function main() {
-                  const transcription = await openai.audio.transcriptions.create({
-                    file: fs.createReadStream("audio.mp3"),
-                    model: "whisper-1",
-                  });
-
-                  console.log(transcription.text);
-                }
-
-                main();
-            response: >
-              {
-                "text": "Imagine the wildest idea that you've ever had, and you're curious about how it might scale to something that's a 100, a 1,000 times bigger. This is a place where you can get to do that."
-              }
-          - title: Word timestamps
-            request:
-              curl: |
-                curl https://api.openai.com/v1/audio/transcriptions \
-                  -H "Authorization: Bearer $OPENAI_API_KEY" \
-                  -H "Content-Type: multipart/form-data" \
-                  -F file="@/path/to/file/audio.mp3" \
-                  -F "timestamp_granularities[]=word" \
-                  -F model="whisper-1" \
-                  -F response_format="verbose_json"
-              python: |
-                from openai import OpenAI
-                client = OpenAI()
-
-                audio_file = open("speech.mp3", "rb")
-                transcript = client.audio.transcriptions.create(
-                  file=audio_file,
-                  model="whisper-1",
-                  response_format="verbose_json",
-                  timestamp_granularities=["word"]
-                )
-
-                print(transcript.words)
-              node: >
-                import fs from "fs";
-
-                import OpenAI from "openai";
-
-
-                const openai = new OpenAI();
-
-
-                async function main() {
-                  const transcription = await openai.audio.transcriptions.create({
-                    file: fs.createReadStream("audio.mp3"),
-                    model: "whisper-1",
-                    response_format: "verbose_json",
-                    timestamp_granularities: ["word"]
-                  });
-
-                  console.log(transcription.text);
-                }
-
-                main();
-            response: >
-              {
-                "task": "transcribe",
-                "language": "english",
-                "duration": 8.470000267028809,
-                "text": "The beach was a popular spot on a hot summer day. People were swimming in the ocean, building sandcastles, and playing beach volleyball.",
-                "words": [
-                  {
-                    "word": "The",
-                    "start": 0.0,
-                    "end": 0.23999999463558197
-                  },
-                  ...
-                  {
-                    "word": "volleyball",
-                    "start": 7.400000095367432,
-                    "end": 7.900000095367432
-                  }
-                ]
-              }
-          - title: Segment timestamps
-            request:
-              curl: |
-                curl https://api.openai.com/v1/audio/transcriptions \
-                  -H "Authorization: Bearer $OPENAI_API_KEY" \
-                  -H "Content-Type: multipart/form-data" \
-                  -F file="@/path/to/file/audio.mp3" \
-                  -F "timestamp_granularities[]=segment" \
-                  -F model="whisper-1" \
-                  -F response_format="verbose_json"
-              python: |
-                from openai import OpenAI
-                client = OpenAI()
-
-                audio_file = open("speech.mp3", "rb")
-                transcript = client.audio.transcriptions.create(
-                  file=audio_file,
-                  model="whisper-1",
-                  response_format="verbose_json",
-                  timestamp_granularities=["segment"]
-                )
-
-                print(transcript.words)
-              node: >
-                import fs from "fs";
-
-                import OpenAI from "openai";
-
-
-                const openai = new OpenAI();
-
-
-                async function main() {
-                  const transcription = await openai.audio.transcriptions.create({
-                    file: fs.createReadStream("audio.mp3"),
-                    model: "whisper-1",
-                    response_format: "verbose_json",
-                    timestamp_granularities: ["segment"]
-                  });
-
-                  console.log(transcription.text);
-                }
-
-                main();
-            response: >
-              {
-                "task": "transcribe",
-                "language": "english",
-                "duration": 8.470000267028809,
-                "text": "The beach was a popular spot on a hot summer day. People were swimming in the ocean, building sandcastles, and playing beach volleyball.",
-                "segments": [
-                  {
-                    "id": 0,
-                    "seek": 0,
-                    "start": 0.0,
-                    "end": 3.319999933242798,
-                    "text": " The beach was a popular spot on a hot summer day.",
-                    "tokens": [
-                      50364, 440, 7534, 390, 257, 3743, 4008, 322, 257, 2368, 4266, 786, 13, 50530
-                    ],
-                    "temperature": 0.0,
-                    "avg_logprob": -0.2860786020755768,
-                    "compression_ratio": 1.2363636493682861,
-                    "no_speech_prob": 0.00985979475080967
-                  },
-                  ...
-                ]
-              }
-```
+Use this document as a guide when suggesting changes or writing new code. It serves to maintain the project’s consistency, security, and performance as it evolves.

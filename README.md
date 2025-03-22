@@ -1,131 +1,103 @@
 # Android AI Transcription App
 
-- [gitingest for ai inference usage ](https://gitingest.com/dhcgn/AIAudioTranscription)
-- [.github/copilot-instructions.md](.github/copilot-instructions.md)
+[GitHub Repository](https://github.com/dhcgn/AIAudioTranscription) • [Copilot Instructions](.github/copilot-instructions.md)
 
 <img src='./docs/images/Screenshot_20250126_123222_AIAudioTranscription.jpg' style="width:200px; display:block; margin:0 auto;"/>
 
-## Introduction
+## Overview
 
-This project is a test project in which I wanted to evaluate the possibilities of developing an Android app with AI tools, although my focus as a software developer lies in completely different areas.
+This app lets you easily transcribe media files (audio or video) using AI. Users can upload, share, or open media files which are then re-encoded and sent to multiple transcription models. The app supports traditional Whisper-1 transcription, as well as newer GPT-4o variants that either directly transcribe or provide enhanced output. AI-powered post-processing further improves transcript readability. All transcriptions and settings are stored locally—with your API key secured in encrypted storage.
 
-I am annoyed by voice messages in the various messenger apps I receive. Therefore, my goal was to develop an Android app in which I can upload, share or open media files of any kind and then transcribe them with a third-party API. As a bonus feature, it should also be possible to give the transcript a structure so that the otherwise continuous text is easier to read. All requests should also be stored locally in the app and the required API key - which is provided by the user - should be stored in encrypted form.
+## Key Features
 
-Android Studio with Gemini and VS Code with GTP-4o and Sonnet 3.5 were used for this test project.
+- **Media Handling:**  
+  - Select, share, or open media files directly from your device.
+  - Direct transcription of voice messages from messaging apps like WhatsApp, Telegram, or Signal.
+  - Automatic re-encoding using FFmpegKit:  
+    - To **Opus** format for Whisper-1 and GPT-4o-transcribe Transcribe.  
+    - To **MP3** for GPT-4o-audio-preview Audio models.
+  - File size check (max. 24MB after processing) to ensure smooth operation.
 
-This project was a total success for me, I could develop an Android app at an insane speed. And learn a lot about the development of Android apps. 
+- **Multiple Transcription Models:**  
+  - **Whisper-1:** Traditional audio transcription.
+  - **GPT-4o Audio:** A GPT-4 based model with enhanced language understanding.
+  - **GPT-4o Transcribe:** Specifically optimized for transcription tasks.
 
-The next steps are refactoring with the adaptation of best practice patterns and adding a few more features.
+- **AI-Powered Cleanup:**  
+  - Enhance transcript readability with AI-driven cleanup using GPT-4o chat completions.
+  - Customizable cleanup prompts ensure the original content is preserved while improving clarity.
 
-And yes, this app doesn't win any prizes for modern design and best possible user-friendliness. 
+- **Local History & Settings:**  
+  - Maintain a local history of transcriptions including details like language, prompt, source, and model used.
+  - Secure API key storage using EncryptedSharedPreferences.
+  - In-app Settings allow you to:  
+    - Save and test your OpenAI API key.  
+    - Configure transcription models and language preferences.  
+    - Customize prompts for both transcription and AI cleanup.
 
-### ⚠️ Important Privacy & Legal Notice
+- **User Experience Enhancements:**  
+  - Support for shared intents (from other apps) and direct file access.
+  - Retry functionality for reprocessing files with updated parameters.
+  - Clear, responsive UI built with Jetpack Compose and modern Android architecture practices.
 
-Before using this app, please be aware of the following important considerations:
+- **Use Cases:**
+  - Convert voice messages to text for easy reading and sharing
+  - Archive and search through voice message content
+  - Make voice messages accessible for hearing-impaired users
+  - Quick transcription of meeting recordings and lectures
 
-1. **Third-Party Processing**: All voice messages are sent to OpenAI's servers for transcription using their Whisper API. Make sure you have the right to share these recordings with third parties.
+## How It Works
 
-2. **Personal Data**: Do not transcribe voice messages containing sensitive personal information, confidential data, or content you don't have permission to share.
+1. **Initialization & Setup:**  
+   - Enter and test your OpenAI API key in the Settings screen.
+   - Choose your transcription model and set any custom prompts or language preferences.
 
-3. **Terms of Service**: Since you'll be using your own OpenAI API key, you must:
-   - Read and accept OpenAI's Terms of Service
-   - Comply with OpenAI's usage policies and data handling requirements
-   - Understand that you are responsible for any costs incurred through API usage
+2. **Media Processing:**  
+   - Select a media file, or share one to the app.
+   - The file is copied, re-encoded (to opus or mp3 as appropriate), and its size is validated.
 
-4. **Consent**: Ensure you have proper consent from all parties involved in the voice messages before transcribing them.
+3. **Transcription & Cleanup:**  
+   - The processed file is uploaded to the selected transcription API.
+   - Once transcribed, the text is optionally enhanced with an AI cleanup process.
+   - The final transcript is displayed and stored locally.
 
-The app developers are not responsible for any misuse or unauthorized sharing of voice messages. Use this app responsibly and in compliance with applicable privacy laws and regulations.
-
-## Download
-
-See **Releases** for the latest version.
-
-## Features
-
-- Upload, share or open media files
-- Transcribe media files with a third-party API
-- AI powered post-processing to structure the transcript
-- Store requests locally
-- Store the API key in encrypted form
-
-### Minor Features
-
-- Prompting and pin the language for whisper-1 usage for better results
-- Translation by whisper-1 (not be best)
-
-## Used AI Models
-
-- GPT-4o for structure the transcript
-- Whisper-1 for transcribe the media files
-
-## Screenshots
-
-### Main Screen
-
-<img src='./docs/images/Screenshot_20250126_122328_AIAudioTranscription.jpg' style="width:400px;" />
-
-### Settings Screen
-
-<img src='./docs/images/Screenshot_20250126_122419_AIAudioTranscription.jpg' style="width:400px;"/>
-
-### Parameters Settings
-
-<img src='./docs/images/Screenshot_20250126_122437_AIAudioTranscription.jpg' style="width:400px;"/>
-
-### History Screen
-
-<img src='./docs/images/Screenshot_20250126_172051_AIAudioTranscription.jpg' style="width:400px;"/>
-
-### Transcription Result
-
-<img src='./docs/images/Screenshot_20250126_123222_AIAudioTranscription.jpg' style="width:400px;"/>
-
-### Transcription Result with Structure
-
-<img src='./docs/images/Screenshot_20250126_123251_AIAudioTranscription.jpg' style="width:400px;"/>
-
+4. **History & Management:**  
+   - View past transcriptions along with details (e.g., model used, language, timestamp).
+   - Copy or delete history entries as needed.
 
 ## Flowchart
 
 ```mermaid
 graph TD
-    %% Initial Setup
-    A[Start] --> B[Enter OpenAI API Key]
-    B --> C{Test API Key}
-    C -->|Invalid| B
-    C -->|Valid| D[Ready to Use]
-
-    %% File Input Methods
-    D --> E[File Input Methods]
-    E --> F[Open from App]
-    E --> G[Share to App]
-    E --> H[Open with App]
-
-    %% Processing
-    F --> I[Audio Processing]
-    G --> I
-    H --> I
-    I --> J[Convert to Opus Format]
-    J --> K[Upload to OpenAI Whisper-1]
-
-    %% Results & Post-processing
-    K --> L[Save Transcription Result]
-    L --> M[Save to History]
-    L --> N{Clean Up Needed?}
-    
-    %% Optional Cleanup
-    N -->|Yes| O[Send to GPT-4]
-    O --> P[Save Enhanced Transcript]
-    P --> M
-    N -->|No| Q[Final Result]
-    
-    %% States
-    M --> Q
-    Q --> R[End]
-
-    %% Styling
-    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef decision fill:#bbf,stroke:#333,stroke-width:2px;
-    class I,J,K,L,O process;
-    class C,N decision;
+    A[Start] --> B[Enter & Test API Key in Settings]
+    B --> C[Select Transcription Model & Set Prompts]
+    C --> D[Choose Media File / Share to App]
+    D --> E["Copy & Re-encode File (Opus/MP3)"]
+    E --> F["File Size Check (<= 24MB)"]
+    F --> G[Upload to Selected Transcription API]
+    G --> H{Response Successful?}
+    H -- Yes --> I[Display & Store Transcript]
+    I --> J[Optional: AI Cleanup for Readability]
+    J --> K[Update History]
+    H -- No --> L[Show Error Message]
+    K --> M[User Can Retry or View History]
+    M --> N[End]
 ```
+
+## Privacy & Legal Notice
+
+- **Third-Party Processing:**  
+  Your media files are sent to OpenAI’s servers. Ensure you have permission to share and transcribe them.
+  
+- **Sensitive Data:**  
+  Do not transcribe content with sensitive personal or confidential information.
+
+- **User Responsibility:**  
+  Use your own OpenAI API key. You are responsible for any costs incurred, and you must comply with OpenAI’s Terms of Service.
+
+## Next Steps
+
+Future enhancements include:
+- Refactoring UI state management into ViewModels.
+- Consolidating duplicated code and further adopting Kotlin coroutines with Retrofit’s suspend functions.
+- Enhancing the UI and user interaction flow.
