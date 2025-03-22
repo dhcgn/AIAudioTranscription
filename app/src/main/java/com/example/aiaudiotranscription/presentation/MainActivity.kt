@@ -554,7 +554,8 @@ fun MainContent(
                                                     text = cleanedText,
                                                     language = language,
                                                     prompt = "Cleaned version of previous transcription",
-                                                    sourceHint = "AI Cleanup"
+                                                    sourceHint = "AI Cleanup",
+                                                    model = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER) // Include model information
                                                 )
                                             )
                                         } else {
