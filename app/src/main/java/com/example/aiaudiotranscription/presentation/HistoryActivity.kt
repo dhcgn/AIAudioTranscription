@@ -214,6 +214,10 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
+                            text = "Model: ${entry.model}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
                             text = "Date: ${dateFormat.format(entry.timestamp)}",
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -261,6 +265,7 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                                     appendLine("Language: ${entry.language}")
                                     appendLine("Prompt: ${entry.prompt}")
                                     appendLine("Source: ${entry.sourceHint}")
+                                    appendLine("Model: ${entry.model}")
                                     appendLine("Date: ${dateFormat.format(entry.timestamp)}")
                                 }
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -332,6 +337,7 @@ fun HistoryScreenPreview() {
             language = "English",
             prompt = "Interview transcription",
             sourceHint = "interview.mp3",
+            model = "whisper-1",
             timestamp = Date()
         ),
         TranscriptionEntry(
@@ -340,6 +346,7 @@ fun HistoryScreenPreview() {
             language = "German",
             prompt = "Meeting notes",
             sourceHint = "meeting_2024.m4a",
+            model = "whisper-1",
             timestamp = Date()
         ),
         TranscriptionEntry(
@@ -348,6 +355,7 @@ fun HistoryScreenPreview() {
             language = "English",
             prompt = "Lecture transcription",
             sourceHint = "lecture_recording.wav",
+            model = "whisper-1",
             timestamp = Date()
         )
     )

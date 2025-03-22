@@ -256,7 +256,8 @@ class MainActivity : ComponentActivity() {
                                     text = transcriptionText,
                                     language = languageState.value,
                                     prompt = promptState.value,
-                                    sourceHint = filePath
+                                    sourceHint = filePath,
+                                    model = selectedModel // Include model information
                                 )
                             )
                             onComplete(transcriptionText)
@@ -304,7 +305,8 @@ class MainActivity : ComponentActivity() {
                                     text = transcriptionText,
                                     language = languageState.value,
                                     prompt = promptState.value,
-                                    sourceHint = filePath
+                                    sourceHint = filePath,
+                                    model = selectedModel // Include model information
                                 )
                             )
                             onComplete(transcriptionText)
@@ -363,7 +365,8 @@ class MainActivity : ComponentActivity() {
                                     text = transcriptionText,
                                     language = languageState.value,
                                     prompt = fullPrompt, // Use the actual prompt that was sent to the API
-                                    sourceHint = filePath
+                                    sourceHint = filePath,
+                                    model = selectedModel // Include model information
                                 )
                             )
                             onComplete(transcriptionText)
