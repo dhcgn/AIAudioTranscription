@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.example.aiaudiotranscription.api.MODEL_GPT
 import com.example.aiaudiotranscription.api.MODEL_GPT_AUDIO
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
+import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.OpenAiApiService
 import com.example.aiaudiotranscription.api.WhisperModelsResponse
@@ -241,11 +242,35 @@ fun SettingsScreen(
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        onClick = { 
+                            selectedModel = MODEL_GPT_4O_TRANSCRIBE
+                            SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT_4O_TRANSCRIBE)
+                        }
+                    )
+            ) {
+                RadioButton(
+                    selected = selectedModel == MODEL_GPT_4O_TRANSCRIBE,
+                    onClick = { 
+                        selectedModel = MODEL_GPT_4O_TRANSCRIBE
+                        SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT_4O_TRANSCRIBE)
+                    }
+                )
+                Text(
+                    text = "GPT-4o Transcribe",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
         }
         Text(
             text = when (selectedModel) {
                 MODEL_WHISPER -> "Traditional audio transcription model"
                 MODEL_GPT -> "New GPT-4 based model with better understanding"
+                MODEL_GPT_4O_TRANSCRIBE -> "GPT-4o Transcribe model"
                 else -> ""
             },
             style = MaterialTheme.typography.bodySmall,
@@ -464,6 +489,10 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (List<ModelSt
                         ModelStatus(
                             "GPT Audio Model (${MODEL_GPT_AUDIO})", 
                             modelIds.contains(MODEL_GPT_AUDIO)
+                        ),
+                        ModelStatus(
+                            "GPT-4o Transcribe Model (${MODEL_GPT_4O_TRANSCRIBE})", 
+                            modelIds.contains(MODEL_GPT_4O_TRANSCRIBE)
                         )
                     )
                     onResult(results)

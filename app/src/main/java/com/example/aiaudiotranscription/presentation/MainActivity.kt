@@ -85,6 +85,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
+import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
 import com.example.aiaudiotranscription.presentation.getTranscriptionModel
 import com.example.aiaudiotranscription.utils.FileProcessingException
 import com.example.aiaudiotranscription.utils.FileProcessingManager
@@ -241,6 +242,54 @@ class MainActivity : ComponentActivity() {
             openAiApiService.transcribeAudio(requestBodyBuilder.build())
                 .enqueue(object : Callback<WhisperResponse> {
                     // ...existing callback implementation...
+                    override fun onResponse(
+                        call: Call<WhisperResponse>,
+                        response: Response<WhisperResponse>
+                    ) {
+                        processingState.value = ProcessingState.DownloadingResponse
+                        if (response.isSuccessful) {
+                            val transcriptionText = response.body()?.text ?: "No transcription found."
+                            // Save to history
+                            val dbHelper = TranscriptionDbHelper(context)
+                            dbHelper.addTranscription(
+                                TranscriptionEntry(
+                                    text = transcriptionText,
+                                    language = languageState.value,
+                                    prompt = promptState.value,
+                                    sourceHint = filePath
+                                )
+                            )
+                            onComplete(transcriptionText)
+                        } else {
+                            val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                            onComplete("Error: $errorBody")
+                        }
+                        processingState.value = ProcessingState.Idle
+                    }
+
+                    override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
+                        onComplete("Error: ${t.message}")
+                        processingState.value = ProcessingState.Idle
+                    }
+                })
+        } else if (selectedModel == MODEL_GPT_4O_TRANSCRIBE) {
+            // GPT-4o Transcribe implementation
+            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+            val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.name, requestFile)
+                .addFormDataPart("model", MODEL_GPT_4O_TRANSCRIBE)
+            
+            if (currentLanguage.length in 2..3) {
+                requestBodyBuilder.addFormDataPart("language", currentLanguage)
+            }
+
+            val gpt4oPrompt = SharedPrefsUtils.getGptPrompt(context)
+            if (gpt4oPrompt.isNotEmpty()) {
+                requestBodyBuilder.addFormDataPart("prompt", gpt4oPrompt)
+            }
+
+            openAiApiService.transcribeAudioWithGPT4O(requestBodyBuilder.build())
+                .enqueue(object : Callback<WhisperResponse> {
                     override fun onResponse(
                         call: Call<WhisperResponse>,
                         response: Response<WhisperResponse>

@@ -8,6 +8,7 @@ import retrofit2.http.*
 const val MODEL_WHISPER = "whisper-1"
 const val MODEL_GPT = "gpt-4o-mini"
 const val MODEL_GPT_AUDIO = "gpt-4o-audio-preview"
+const val MODEL_GPT_4O_TRANSCRIBE = "gpt-4o-transcribe"
 
 interface OpenAiApiService {
     @Headers("OpenAI-Beta: assistants=v1")
@@ -23,6 +24,9 @@ interface OpenAiApiService {
 
     @POST("chat/completions")
     fun transcribeAudioWithGPT(@Body request: AudioChatRequest): Call<ChatResponse>
+
+    @POST("audio/transcriptions")
+    fun transcribeAudioWithGPT4O(@Body requestBody: RequestBody): Call<WhisperResponse>
 }
 
 data class WhisperModelsResponse(
