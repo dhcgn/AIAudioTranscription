@@ -9,10 +9,10 @@ import java.util.Date
 data class TranscriptionEntry(
     val id: Long = 0,
     val text: String,
-    val language: String,
-    val prompt: String,
-    val sourceHint: String,
-    val model: String, // Added model field
+    val language: String = "",     // Add default values
+    val prompt: String = "",       // Add default values
+    val sourceHint: String = "",   // Add default values
+    val model: String = "whisper-1", // Add default value
     val timestamp: Date = Date()
 )
 
@@ -46,6 +46,12 @@ class TranscriptionDbHelper(context: Context) :
         }
     }
 
+    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        // Handle downgrade by recreating the database
+        db.execSQL("DROP TABLE IF EXISTS transcriptions")
+        onCreate(db)
+    }
+
     fun addTranscription(entry: TranscriptionEntry): Long {
         val db = this.writableDatabase
         val values = ContentValues().apply {
@@ -77,11 +83,11 @@ class TranscriptionDbHelper(context: Context) :
                 list.add(
                     TranscriptionEntry(
                         id = getLong(getColumnIndexOrThrow("id")),
-                        text = getString(getColumnIndexOrThrow("text")),
-                        language = getString(getColumnIndexOrThrow("language")),
-                        prompt = getString(getColumnIndexOrThrow("prompt")),
-                        sourceHint = getString(getColumnIndexOrThrow("source_hint")),
-                        model = getString(getColumnIndexOrThrow("model")), // Retrieve model information
+                        text = getString(getColumnIndexOrThrow("text")) ?: "",
+                        language = getString(getColumnIndexOrThrow("language")) ?: "",
+                        prompt = getString(getColumnIndexOrThrow("prompt")) ?: "",
+                        sourceHint = getString(getColumnIndexOrThrow("source_hint")) ?: "",
+                        model = getString(getColumnIndexOrThrow("model")) ?: "whisper-1",
                         timestamp = Date(getLong(getColumnIndexOrThrow("timestamp")))
                     )
                 )
