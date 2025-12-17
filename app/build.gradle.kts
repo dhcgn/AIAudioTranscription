@@ -40,6 +40,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -66,8 +67,11 @@ dependencies {
     implementation(libs.glide) // Media handling
     implementation(libs.retrofit) // API calls
     implementation(libs.converter.gson) // JSON handling
-    implementation(libs.ffmpeg.kit.full)// Format conversion
+    implementation(libs.media3.transformer)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
     implementation(libs.androidx.activity.ktx) // Activity results API
+    implementation(libs.guava)
 }
 
 dependencies {
