@@ -269,7 +269,8 @@ class MainActivity : ComponentActivity() {
                 })
         } else if (selectedModel == MODEL_GPT_4O_TRANSCRIBE || selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE) {
             // GPT-4o Transcribe implementation
-            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+            // Now using audio/mp4 because we output AAC in .m4a
+            val requestFile = file.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, requestFile)
                 .addFormDataPart("model", selectedModel ?: MODEL_GPT_4O_TRANSCRIBE)
@@ -615,7 +616,7 @@ fun MainContent(
                     ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER || selectedModel == MODEL_GPT_4O_TRANSCRIBE || selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE) {
                         "Re-encode to Opus..."
                     } else {
-                        "Re-encode to MP3..."
+                        "Re-encode to M4A..."
                     }
                     ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
                     ProcessingState.DownloadingResponse -> "Downloading Response..."

@@ -31,14 +31,14 @@ import kotlin.coroutines.resumeWithException
 class FileProcessingManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    // Change to use both opus and mp3 files
+    // Change to use both opus and mp4 (aac) files
     private val opusOutputFile = File(context.filesDir, "transcription_audio.ogg")
-    private val mp3OutputFile = File(context.filesDir, "transcription_audio.mp3")
+    private val mp4OutputFile = File(context.filesDir, "transcription_audio.m4a")
 
     suspend fun processAudioFile(uri: Uri): File = withContext(Dispatchers.IO) {
         val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
         val useOpus = selectedModel == MODEL_WHISPER
-        val outputFile = if (useOpus) opusOutputFile else mp3OutputFile
+        val outputFile = if (useOpus) opusOutputFile else mp4OutputFile
 
         try {
             // 1. Copy input file
@@ -99,46 +99,48 @@ class FileProcessingManager @Inject constructor(
         outputPath: String,
         useOpus: Boolean,
         bitrate: Int
-    ) = suspendCancellableCoroutine { continuation ->
-        val mimeType = if (useOpus) MimeTypes.AUDIO_OPUS else MimeTypes.AUDIO_MPEG
-        
-        val audioEncoderSettings = AudioEncoderSettings.Builder()
-            .setBitrate(bitrate)
-            .build()
+    ) = withContext(Dispatchers.Main) {
+        suspendCancellableCoroutine { continuation ->
+            val mimeType = if (useOpus) MimeTypes.AUDIO_OPUS else MimeTypes.AUDIO_AAC
             
-        val encoderFactory = DefaultEncoderFactory.Builder(context)
-            .setRequestedAudioEncoderSettings(audioEncoderSettings)
-            .build()
-        
-        val transformer = Transformer.Builder(context)
-            .setAudioMimeType(mimeType)
-            .setEncoderFactory(encoderFactory)
-            .build()
+            val audioEncoderSettings = AudioEncoderSettings.Builder()
+                .setBitrate(bitrate)
+                .build()
+                
+            val encoderFactory = DefaultEncoderFactory.Builder(context)
+                .setRequestedAudioEncoderSettings(audioEncoderSettings)
+                .build()
             
-        val mediaItem = MediaItem.fromUri(Uri.fromFile(File(inputPath)))
-        val editedMediaItem = EditedMediaItem.Builder(mediaItem).build()
-        // Use Builder to avoid private constructor issue.
-        val editedMediaItemSequence = EditedMediaItemSequence.Builder(editedMediaItem).build()
+            val transformer = Transformer.Builder(context)
+                .setAudioMimeType(mimeType)
+                .setEncoderFactory(encoderFactory)
+                .build()
+                
+            val mediaItem = MediaItem.fromUri(Uri.fromFile(File(inputPath)))
+            val editedMediaItem = EditedMediaItem.Builder(mediaItem).build()
+            // Use Builder to avoid private constructor issue.
+            val editedMediaItemSequence = EditedMediaItemSequence.Builder(editedMediaItem).build()
 
-        val composition = Composition.Builder(editedMediaItemSequence).build()
+            val composition = Composition.Builder(editedMediaItemSequence).build()
 
-        transformer.addListener(object : Transformer.Listener {
-            override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                continuation.resume(Unit)
-            }
+            transformer.addListener(object : Transformer.Listener {
+                override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                    continuation.resume(Unit)
+                }
 
-            override fun onError(
-                composition: Composition,
-                exportResult: ExportResult,
-                exportException: ExportException
-            ) {
-                continuation.resumeWithException(
-                    FileProcessingException("Transformer error: ${exportException.message}", exportException)
-                )
-            }
-        })
+                override fun onError(
+                    composition: Composition,
+                    exportResult: ExportResult,
+                    exportException: ExportException
+                ) {
+                    continuation.resumeWithException(
+                        FileProcessingException("Transformer error: ${exportException.message}", exportException)
+                    )
+                }
+            })
 
-        transformer.start(composition, outputPath)
+            transformer.start(composition, outputPath)
+        }
     }
 
     private suspend fun copyUriToFile(uri: Uri): File = withContext(Dispatchers.IO) {
