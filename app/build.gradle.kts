@@ -2,10 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-
-    id("com.google.dagger.hilt.android")
-    id("kotlin-kapt")  // Changed from 'kotlin("kapt")'
-    kotlin("kapt")
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android)
 }
 
 android {
@@ -45,7 +43,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -61,53 +58,24 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-}
 
-dependencies {
-    implementation(libs.glide) // Media handling
-    implementation(libs.retrofit) // API calls
-    implementation(libs.converter.gson) // JSON handling
+    implementation(libs.glide)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
     implementation(libs.media3.transformer)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
-    implementation(libs.androidx.activity.ktx) // Activity results API
+    implementation(libs.androidx.activity.ktx)
     implementation(libs.guava)
-}
 
-dependencies {
-    implementation(libs.ui)
-    implementation(libs.material3)
-    implementation(libs.ui.tooling)
-
-    // implementation("androidx.security:security-crypto:1.0.0")
-}
-
-dependencies {
     implementation(libs.androidx.security.crypto)
-}
 
-dependencies {
-    implementation(libs.retrofit)
-    implementation(libs.converter.gson)
     implementation(libs.okhttp)
     implementation(libs.logging.interceptor)
     implementation(libs.androidx.foundation)
-    implementation (libs.androidx.material.icons.extended)
-}
+    implementation(libs.androidx.material.icons.extended)
 
-dependencies {
     implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
-}
-
-// Allow references to generated code
-kapt {
-    correctErrorTypes = true
-}
-
-buildscript {
-    dependencies {
-        classpath(libs.hilt.android.gradle.plugin)
-    }
 }

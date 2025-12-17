@@ -60,6 +60,7 @@ import com.example.aiaudiotranscription.api.ChatRequest
 import com.example.aiaudiotranscription.api.ChatResponse
 import com.example.aiaudiotranscription.api.Message
 import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
+import com.example.aiaudiotranscription.api.MODEL_GPT_4O_MINI_TRANSCRIBE
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.OpenAiApiService
 import com.example.aiaudiotranscription.api.RetrofitClient
@@ -266,12 +267,12 @@ class MainActivity : ComponentActivity() {
                         processingState.value = ProcessingState.Idle
                     }
                 })
-        } else if (selectedModel == MODEL_GPT_4O_TRANSCRIBE) {
+        } else if (selectedModel == MODEL_GPT_4O_TRANSCRIBE || selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE) {
             // GPT-4o Transcribe implementation
             val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
             val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, requestFile)
-                .addFormDataPart("model", MODEL_GPT_4O_TRANSCRIBE)
+                .addFormDataPart("model", selectedModel ?: MODEL_GPT_4O_TRANSCRIBE)
             
             if (currentLanguage.length in 2..3) {
                 requestBodyBuilder.addFormDataPart("language", currentLanguage)
@@ -611,7 +612,7 @@ fun MainContent(
                 val buttonText = when (processingState) {
                     ProcessingState.Idle -> "Select File and Transcribe"
                     ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER || selectedModel == MODEL_GPT_4O_TRANSCRIBE) {
+                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER || selectedModel == MODEL_GPT_4O_TRANSCRIBE || selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE) {
                         "Re-encode to Opus..."
                     } else {
                         "Re-encode to MP3..."

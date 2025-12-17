@@ -15,8 +15,8 @@ import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
-import com.example.aiaudiotranscription.presentation.getTranscriptionModel
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -29,14 +29,14 @@ import kotlin.coroutines.resumeWithException
 
 @Singleton
 class FileProcessingManager @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
     // Change to use both opus and mp3 files
     private val opusOutputFile = File(context.filesDir, "transcription_audio.ogg")
     private val mp3OutputFile = File(context.filesDir, "transcription_audio.mp3")
 
     suspend fun processAudioFile(uri: Uri): File = withContext(Dispatchers.IO) {
-        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
+        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
         val useOpus = selectedModel == MODEL_WHISPER
         val outputFile = if (useOpus) opusOutputFile else mp3OutputFile
 

@@ -5,9 +5,10 @@ converterGson = "2.9.0"
 ffmpegandroid = "0.3.2"
 foundation = "1.7.6"
 glide = "4.15.1"
-hiltAndroid = "2.48"
+hiltAndroid = "2.57.2"
 hiltNavigationCompose = "1.1.0"
 kotlin = "2.0.0"
+ksp = "2.0.0-1.0.21"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -69,3 +70,5 @@ guava = { module = "com.google.guava:guava", version.ref = "guava" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hiltAndroid" }
