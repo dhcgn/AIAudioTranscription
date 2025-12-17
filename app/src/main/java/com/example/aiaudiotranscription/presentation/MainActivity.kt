@@ -219,7 +219,8 @@ class MainActivity : ComponentActivity() {
         
         if (selectedModel == MODEL_WHISPER) {
             // Existing Whisper implementation
-            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+            // Updated to audio/mp4 as we always output M4A/AAC now
+            val requestFile = file.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, requestFile)
                 .addFormDataPart("model", MODEL_WHISPER)
@@ -269,7 +270,7 @@ class MainActivity : ComponentActivity() {
                 })
         } else if (selectedModel == MODEL_GPT_4O_TRANSCRIBE || selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE) {
             // GPT-4o Transcribe implementation
-            // Now using audio/mp4 because we output AAC in .m4a
+            // Updated to audio/mp4 as we always output M4A/AAC now
             val requestFile = file.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, requestFile)
@@ -339,7 +340,7 @@ class MainActivity : ComponentActivity() {
                             AudioContent.Audio(
                                 input_audio = AudioData(
                                     data = base64Audio,
-                                    format = file.extension.lowercase()
+                                    format = file.extension.lowercase() // This might be "m4a", which is fine for GPT audio
                                 )
                             )
                         )
@@ -613,11 +614,7 @@ fun MainContent(
                 val buttonText = when (processingState) {
                     ProcessingState.Idle -> "Select File and Transcribe"
                     ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER || selectedModel == MODEL_GPT_4O_TRANSCRIBE || selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE) {
-                        "Re-encode to Opus..."
-                    } else {
-                        "Re-encode to M4A..."
-                    }
+                    ProcessingState.RecodingToOpus -> "Re-encode to M4A..."
                     ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
                     ProcessingState.DownloadingResponse -> "Downloading Response..."
                     ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."

@@ -14,8 +14,6 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
-import com.example.aiaudiotranscription.api.MODEL_WHISPER
-import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -31,14 +29,10 @@ import kotlin.coroutines.resumeWithException
 class FileProcessingManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    // Change to use both opus and mp4 (aac) files
-    private val opusOutputFile = File(context.filesDir, "transcription_audio.ogg")
     private val mp4OutputFile = File(context.filesDir, "transcription_audio.m4a")
 
     suspend fun processAudioFile(uri: Uri): File = withContext(Dispatchers.IO) {
-        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
-        val useOpus = selectedModel == MODEL_WHISPER
-        val outputFile = if (useOpus) opusOutputFile else mp4OutputFile
+        val outputFile = mp4OutputFile
 
         try {
             // 1. Copy input file
@@ -50,14 +44,14 @@ class FileProcessingManager @Inject constructor(
             }
 
             // 3. Convert file
-            var bitrate = if (useOpus) 12000 else 32000
-            val minBitrate = if (useOpus) 6000 else 16000
+            var bitrate = 32000
+            val minBitrate = 16000
             val maxSizeBytes = 25 * 1024 * 1024L
             var attempts = 0
             val maxAttempts = 10
 
             while (attempts < maxAttempts) {
-                convertAudioFile(inputFile.absolutePath, outputFile.absolutePath, useOpus, bitrate)
+                convertAudioFile(inputFile.absolutePath, outputFile.absolutePath, bitrate)
                 attempts++
 
                 val currentSize = outputFile.length()
@@ -97,11 +91,10 @@ class FileProcessingManager @Inject constructor(
     private suspend fun convertAudioFile(
         inputPath: String,
         outputPath: String,
-        useOpus: Boolean,
         bitrate: Int
     ) = withContext(Dispatchers.Main) {
         suspendCancellableCoroutine { continuation ->
-            val mimeType = if (useOpus) MimeTypes.AUDIO_OPUS else MimeTypes.AUDIO_AAC
+            val mimeType = MimeTypes.AUDIO_AAC
             
             val audioEncoderSettings = AudioEncoderSettings.Builder()
                 .setBitrate(bitrate)
