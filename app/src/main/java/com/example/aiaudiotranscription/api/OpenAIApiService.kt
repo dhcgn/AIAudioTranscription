@@ -6,7 +6,7 @@ import retrofit2.http.*
 
 // Add constants
 const val MODEL_WHISPER = "whisper-1"
-const val MODEL_GPT = "gpt-4o-mini"
+const val MODEL_GPT_TEXT = "gpt-5-nano"
 const val MODEL_GPT_4O_TRANSCRIBE = "gpt-4o-transcribe"
 
 const val MODEL_GPT_4O_MINI_TRANSCRIBE = "gpt-4o-mini-transcribe-2025-12-15"
@@ -55,7 +55,6 @@ data class Message(
 )
 
 data class ChatRequest(
-    val model: String = MODEL_GPT,
+    val model: String = MODEL_GPT_TEXT,
     val messages: List<Message>,
-    val temperature: Double = 0.3,
 )
