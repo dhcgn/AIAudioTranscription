@@ -9,7 +9,7 @@ This document provides essential guidelines and context for AIs helping with thi
   Transcribe media files (audio/video) using OpenAI’s Whisper API and GPT-4o-based models with additional AI-powered text cleanup.
 - **Key Features:**  
   - File selection (including sharing intents)  
-  - Audio processing (conversion via FFmpegKit to opus or mp3)  
+  - Audio processing (conversion via FFmpegKit to AAC/M4A format)  
   - Transcription using multiple models  
   - Local transcription history storage  
   - Secure API key management via EncryptedSharedPreferences  
