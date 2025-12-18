@@ -22,25 +22,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -65,12 +59,24 @@ import com.example.aiaudiotranscription.api.AudioMessage
 import com.example.aiaudiotranscription.api.ChatRequest
 import com.example.aiaudiotranscription.api.ChatResponse
 import com.example.aiaudiotranscription.api.Message
-import com.example.aiaudiotranscription.api.RetrofitClient
+import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
+import com.example.aiaudiotranscription.api.MODEL_GPT_4O_MINI_TRANSCRIBE
+import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.OpenAiApiService
+import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.WhisperResponse
+import com.example.aiaudiotranscription.data.TranscriptionDbHelper
+import com.example.aiaudiotranscription.data.TranscriptionEntry
+import com.example.aiaudiotranscription.presentation.HistoryActivity
 import com.example.aiaudiotranscription.presentation.SettingsActivity
 import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
 import com.example.aiaudiotranscription.ui.theme.AIAudioTranscriptionTheme
+import com.example.aiaudiotranscription.utils.FileProcessingException
+import com.example.aiaudiotranscription.utils.FileProcessingManager
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -78,18 +84,6 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
-import com.example.aiaudiotranscription.data.TranscriptionDbHelper
-import com.example.aiaudiotranscription.data.TranscriptionEntry
-import com.example.aiaudiotranscription.presentation.HistoryActivity
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import com.example.aiaudiotranscription.api.MODEL_WHISPER
-import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
-import com.example.aiaudiotranscription.presentation.getTranscriptionModel
-import com.example.aiaudiotranscription.utils.FileProcessingException
-import com.example.aiaudiotranscription.utils.FileProcessingManager
-import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
@@ -225,7 +219,8 @@ class MainActivity : ComponentActivity() {
         
         if (selectedModel == MODEL_WHISPER) {
             // Existing Whisper implementation
-            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+            // Updated to audio/mp4 as we always output M4A/AAC now
+            val requestFile = file.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, requestFile)
                 .addFormDataPart("model", MODEL_WHISPER)
@@ -273,12 +268,13 @@ class MainActivity : ComponentActivity() {
                         processingState.value = ProcessingState.Idle
                     }
                 })
-        } else if (selectedModel == MODEL_GPT_4O_TRANSCRIBE) {
+        } else if (selectedModel == MODEL_GPT_4O_TRANSCRIBE || selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE) {
             // GPT-4o Transcribe implementation
-            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
+            // Updated to audio/mp4 as we always output M4A/AAC now
+            val requestFile = file.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val requestBodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, requestFile)
-                .addFormDataPart("model", MODEL_GPT_4O_TRANSCRIBE)
+                .addFormDataPart("model", selectedModel ?: MODEL_GPT_4O_TRANSCRIBE)
             
             if (currentLanguage.length in 2..3) {
                 requestBodyBuilder.addFormDataPart("language", currentLanguage)
@@ -344,7 +340,7 @@ class MainActivity : ComponentActivity() {
                             AudioContent.Audio(
                                 input_audio = AudioData(
                                     data = base64Audio,
-                                    format = file.extension.lowercase()
+                                    format = file.extension.lowercase() // This might be "m4a", which is fine for GPT audio
                                 )
                             )
                         )
@@ -424,9 +420,19 @@ fun AppTopBar() {
     TopAppBar(
         title = {
             Column {
-                Text(
-                    "AI Transcription",
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "AI Transcription",
+                    )
+                    if (BuildConfig.DEBUG) {
+                        Text(
+                            " (Debug)",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
                 Text(
                     "Transcribe media files with the help of OpenAI's Whisper API or GPT-4o",
                     style = MaterialTheme.typography.bodyMedium,
@@ -604,15 +610,11 @@ fun MainContent(
                 enabled = processingState == ProcessingState.Idle,
                 modifier = Modifier.weight(1f)
             ) {
-                val selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
+                val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
                 val buttonText = when (processingState) {
                     ProcessingState.Idle -> "Select File and Transcribe"
                     ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToOpus -> if (selectedModel == MODEL_WHISPER || selectedModel == MODEL_GPT_4O_TRANSCRIBE) {
-                        "Re-encode to Opus..."
-                    } else {
-                        "Re-encode to MP3..."
-                    }
+                    ProcessingState.RecodingToOpus -> "Re-encode to M4A..."
                     ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
                     ProcessingState.DownloadingResponse -> "Downloading Response..."
                     ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."

@@ -24,6 +24,7 @@ import com.example.aiaudiotranscription.api.MODEL_GPT
 import com.example.aiaudiotranscription.api.MODEL_GPT_AUDIO
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
+import com.example.aiaudiotranscription.api.MODEL_GPT_4O_MINI_TRANSCRIBE
 import com.example.aiaudiotranscription.api.RetrofitClient
 import com.example.aiaudiotranscription.api.OpenAiApiService
 import com.example.aiaudiotranscription.api.WhisperModelsResponse
@@ -265,12 +266,36 @@ fun SettingsScreen(
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        onClick = {
+                            selectedModel = MODEL_GPT_4O_MINI_TRANSCRIBE
+                            SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT_4O_MINI_TRANSCRIBE)
+                        }
+                    )
+            ) {
+                RadioButton(
+                    selected = selectedModel == MODEL_GPT_4O_MINI_TRANSCRIBE,
+                    onClick = {
+                        selectedModel = MODEL_GPT_4O_MINI_TRANSCRIBE
+                        SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT_4O_MINI_TRANSCRIBE)
+                    }
+                )
+                Text(
+                    text = "GPT-4o-mini Transcribe 2025-12-15",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
         }
         Text(
             text = when (selectedModel) {
                 MODEL_WHISPER -> "Traditional audio transcription model"
                 MODEL_GPT -> "New GPT-4 based model with better understanding"
                 MODEL_GPT_4O_TRANSCRIBE -> "GPT-4o Transcribe model"
+                MODEL_GPT_4O_MINI_TRANSCRIBE -> "Efficient GPT-4o-mini Transcribe model"
                 else -> ""
             },
             style = MaterialTheme.typography.bodySmall,
@@ -493,6 +518,10 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (List<ModelSt
                         ModelStatus(
                             "GPT-4o Transcribe Model (${MODEL_GPT_4O_TRANSCRIBE})", 
                             modelIds.contains(MODEL_GPT_4O_TRANSCRIBE)
+                        ),
+                        ModelStatus(
+                            "GPT-4o-mini Transcribe (${MODEL_GPT_4O_MINI_TRANSCRIBE})",
+                            modelIds.contains(MODEL_GPT_4O_MINI_TRANSCRIBE)
                         )
                     )
                     onResult(results)
@@ -511,15 +540,4 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (List<ModelSt
                 )))
             }
         })
-}
-
-// Add to SharedPrefsUtils object:
-fun SharedPrefsUtils.saveTranscriptionModel(context: Context, model: String) {
-    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-    prefs.edit().putString("transcription_model", model).apply()
-}
-
-fun SharedPrefsUtils.getTranscriptionModel(context: Context): String? {
-    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-    return prefs.getString("transcription_model", MODEL_WHISPER)
 }

@@ -10,6 +10,8 @@ const val MODEL_GPT = "gpt-4o-mini"
 const val MODEL_GPT_AUDIO = "gpt-4o-audio-preview"
 const val MODEL_GPT_4O_TRANSCRIBE = "gpt-4o-transcribe"
 
+const val MODEL_GPT_4O_MINI_TRANSCRIBE = "gpt-4o-mini-transcribe-2025-12-15"
+
 interface OpenAiApiService {
     @Headers("OpenAI-Beta: assistants=v1")
     @GET("models")

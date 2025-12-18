@@ -2,8 +2,19 @@ package com.example.aiaudiotranscription.utils
 
 import android.content.Context
 import android.net.Uri
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.ReturnCode
+import androidx.annotation.OptIn
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.transformer.Composition
+import androidx.media3.transformer.DefaultEncoderFactory
+import androidx.media3.transformer.AudioEncoderSettings
+import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.EditedMediaItemSequence
+import androidx.media3.transformer.ExportException
+import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.Transformer
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -13,38 +24,59 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import com.example.aiaudiotranscription.api.MODEL_WHISPER
-import com.example.aiaudiotranscription.presentation.getTranscriptionModel
-import com.example.aiaudiotranscription.sharedPrefsUtils.SharedPrefsUtils
 
 @Singleton
 class FileProcessingManager @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
-    // Change to use both opus and mp3 files
-    private val opusOutputFile = File(context.filesDir, "transcription_audio.ogg")
-    private val mp3OutputFile = File(context.filesDir, "transcription_audio.mp3")
+    private val mp4OutputFile = File(context.filesDir, "transcription_audio.m4a")
 
     suspend fun processAudioFile(uri: Uri): File = withContext(Dispatchers.IO) {
-        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context) ?: MODEL_WHISPER
-        val useOpus = selectedModel == MODEL_WHISPER
-        val outputFile = if (useOpus) opusOutputFile else mp3OutputFile
+        val outputFile = mp4OutputFile
 
         try {
             // 1. Copy input file
             val inputFile = copyUriToFile(uri)
-            
+
             // 2. Ensure output file is clean
             if (outputFile.exists()) {
                 outputFile.delete()
             }
-            
+
             // 3. Convert file
-            convertAudioFile(inputFile.absolutePath, outputFile.absolutePath, useOpus)
-            
+            var bitrate = 32000
+            val minBitrate = 16000
+            val maxSizeBytes = 25 * 1024 * 1024L
+            var attempts = 0
+            val maxAttempts = 10
+
+            while (attempts < maxAttempts) {
+                convertAudioFile(inputFile.absolutePath, outputFile.absolutePath, bitrate)
+                attempts++
+
+                val currentSize = outputFile.length()
+                if (currentSize <= maxSizeBytes || bitrate <= minBitrate) {
+                    break
+                }
+
+                // Delete output file before retry
+                if (outputFile.exists()) {
+                    outputFile.delete()
+                }
+
+                // Reduce bitrate if file is too large
+                // Calculate proportional reduction
+                val targetBitrate = (bitrate * maxSizeBytes.toDouble() / currentSize).toInt()
+                // Ensure we drop at least 1kbps
+                val nextBitrate = minOf(targetBitrate, bitrate - 1000)
+
+                // Clamp to min
+                bitrate = maxOf(minBitrate, nextBitrate)
+            }
+
             // 4. Clean up input file
             inputFile.delete()
-            
+
             outputFile
         } catch (e: Exception) {
             // Clean up output file on error
@@ -55,27 +87,52 @@ class FileProcessingManager @Inject constructor(
         }
     }
 
+    @OptIn(UnstableApi::class)
     private suspend fun convertAudioFile(
         inputPath: String,
         outputPath: String,
-        useOpus: Boolean
-    ) = suspendCancellableCoroutine { continuation ->
-        val command = if (useOpus) {
-            // Original Opus command for Whisper
-            "-i $inputPath -vn -map_metadata -1 -ac 1 -c:a libopus -b:a 12k -application voip $outputPath"
-        } else {
-            // MP3 command for GPT-4 Audio
-            "-i $inputPath -vn -map_metadata -1 -ac 1 -c:a libmp3lame -b:a 32k $outputPath"
-        }
-        
-        FFmpegKit.executeAsync(command) { session ->
-            if (ReturnCode.isSuccess(session.returnCode)) {
-                continuation.resume(Unit)
-            } else {
-                continuation.resumeWithException(
-                    FileProcessingException("FFmpeg error: ${session.failStackTrace}")
-                )
-            }
+        bitrate: Int
+    ) = withContext(Dispatchers.Main) {
+        suspendCancellableCoroutine { continuation ->
+            val mimeType = MimeTypes.AUDIO_AAC
+            
+            val audioEncoderSettings = AudioEncoderSettings.Builder()
+                .setBitrate(bitrate)
+                .build()
+                
+            val encoderFactory = DefaultEncoderFactory.Builder(context)
+                .setRequestedAudioEncoderSettings(audioEncoderSettings)
+                .build()
+            
+            val transformer = Transformer.Builder(context)
+                .setAudioMimeType(mimeType)
+                .setEncoderFactory(encoderFactory)
+                .build()
+                
+            val mediaItem = MediaItem.fromUri(Uri.fromFile(File(inputPath)))
+            val editedMediaItem = EditedMediaItem.Builder(mediaItem).build()
+            // Use Builder to avoid private constructor issue.
+            val editedMediaItemSequence = EditedMediaItemSequence.Builder(editedMediaItem).build()
+
+            val composition = Composition.Builder(editedMediaItemSequence).build()
+
+            transformer.addListener(object : Transformer.Listener {
+                override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                    continuation.resume(Unit)
+                }
+
+                override fun onError(
+                    composition: Composition,
+                    exportResult: ExportResult,
+                    exportException: ExportException
+                ) {
+                    continuation.resumeWithException(
+                        FileProcessingException("Transformer error: ${exportException.message}", exportException)
+                    )
+                }
+            })
+
+            transformer.start(composition, outputPath)
         }
     }
 
