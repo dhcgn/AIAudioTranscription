@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -52,10 +51,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.example.aiaudiotranscription.api.AudioChatRequest
-import com.example.aiaudiotranscription.api.AudioContent
-import com.example.aiaudiotranscription.api.AudioData
-import com.example.aiaudiotranscription.api.AudioMessage
 import com.example.aiaudiotranscription.api.ChatRequest
 import com.example.aiaudiotranscription.api.ChatResponse
 import com.example.aiaudiotranscription.api.Message
@@ -319,62 +314,9 @@ class MainActivity : ComponentActivity() {
                     }
                 })
         } else {
-            // GPT-4 Audio implementation
-            val audioBytes = file.readBytes()
-            val base64Audio = Base64.encodeToString(audioBytes, Base64.NO_WRAP)
-            
-            // Build the complete prompt using GPT prompt from SharedPrefs
-            val gptPrompt = SharedPrefsUtils.getGptPrompt(context)
-            val fullPrompt = buildString {
-                append(gptPrompt)
-                if (currentLanguage.length >= 2) {
-                    append("\n\nLanguage of the input audio is: $currentLanguage")
-                }
-            }
-
-            val request = AudioChatRequest(
-                messages = listOf(
-                    AudioMessage(
-                        content = listOf(
-                            AudioContent.Text(text = fullPrompt),
-                            AudioContent.Audio(
-                                input_audio = AudioData(
-                                    data = base64Audio,
-                                    format = file.extension.lowercase() // This might be "m4a", which is fine for GPT audio
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-
-            openAiApiService.transcribeAudioWithGPT(request)
-                .enqueue(object : Callback<ChatResponse> {
-                    override fun onResponse(call: Call<ChatResponse>, response: Response<ChatResponse>) {
-                        if (response.isSuccessful) {
-                            val transcriptionText = response.body()?.choices?.firstOrNull()?.message?.content
-                                ?: "No transcription found."
-                            // Save to history with the full prompt that was actually used
-                            val dbHelper = TranscriptionDbHelper(context)
-                            dbHelper.addTranscription(
-                                TranscriptionEntry(
-                                    text = transcriptionText,
-                                    language = languageState.value,
-                                    prompt = fullPrompt, // Use the actual prompt that was sent to the API
-                                    sourceHint = filePath,
-                                    model = selectedModel // Include model information
-                                )
-                            )
-                            onComplete(transcriptionText)
-                        } else {
-                            onComplete("Error: ${response.errorBody()?.string() ?: "Unknown error"}")
-                        }
-                    }
-
-                    override fun onFailure(call: Call<ChatResponse>, t: Throwable) {
-                        onComplete("Error: ${t.message}")
-                    }
-                })
+            // Unsupported model
+            onComplete("Error: Unsupported transcription model: $selectedModel")
+            processingState.value = ProcessingState.Idle
         }
     }
 
@@ -434,7 +376,7 @@ fun AppTopBar() {
                     }
                 }
                 Text(
-                    "Transcribe media files with the help of OpenAI's Whisper API or GPT-4o",
+                    "Transcribe media files with OpenAI's Whisper and GPT-4o Transcribe models",
                     style = MaterialTheme.typography.bodyMedium,
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                     modifier = Modifier.padding(end = 50.dp)

@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.aiaudiotranscription.api.MODEL_GPT
-import com.example.aiaudiotranscription.api.MODEL_GPT_AUDIO
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
 import com.example.aiaudiotranscription.api.MODEL_GPT_4O_MINI_TRANSCRIBE
@@ -187,8 +186,8 @@ fun SettingsScreen(
         Text("Used Transcription Model", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Whisper-1 is the Open Source version large-v2 of whisper, file will be transcode to opus. " +
-                    "GPT-4o is a multi-modal LLM and can also transcribe audio, file will be transcode to mp3 ",
+            text = "Whisper-1 is the Open Source version large-v2 of whisper, file will be transcoded to opus. " +
+                    "GPT-4o Transcribe models are optimized for audio transcription tasks.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -217,29 +216,6 @@ fun SettingsScreen(
                 )
                 Text(
                     text = "Whisper-1",
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        onClick = { 
-                            selectedModel = MODEL_GPT
-                            SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT)
-                        }
-                    )
-            ) {
-                RadioButton(
-                    selected = selectedModel == MODEL_GPT,
-                    onClick = { 
-                        selectedModel = MODEL_GPT
-                        SharedPrefsUtils.saveTranscriptionModel(context, MODEL_GPT)
-                    }
-                )
-                Text(
-                    text = "GPT-4o Audio",
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }
@@ -293,7 +269,6 @@ fun SettingsScreen(
         Text(
             text = when (selectedModel) {
                 MODEL_WHISPER -> "Traditional audio transcription model"
-                MODEL_GPT -> "New GPT-4 based model with better understanding"
                 MODEL_GPT_4O_TRANSCRIBE -> "GPT-4o Transcribe model"
                 MODEL_GPT_4O_MINI_TRANSCRIBE -> "Efficient GPT-4o-mini Transcribe model"
                 else -> ""
@@ -510,10 +485,6 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (List<ModelSt
                         ModelStatus(
                             "GPT Model (${MODEL_GPT})", 
                             modelIds.contains(MODEL_GPT)
-                        ),
-                        ModelStatus(
-                            "GPT Audio Model (${MODEL_GPT_AUDIO})", 
-                            modelIds.contains(MODEL_GPT_AUDIO)
                         ),
                         ModelStatus(
                             "GPT-4o Transcribe Model (${MODEL_GPT_4O_TRANSCRIBE})", 
