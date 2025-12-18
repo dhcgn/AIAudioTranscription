@@ -186,8 +186,9 @@ fun SettingsScreen(
         Text("Used Transcription Model", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Whisper-1 is the Open Source version large-v2 of whisper, file will be transcoded to opus. " +
-                    "GPT-4o Transcribe models are optimized for audio transcription tasks.",
+            text = "Whisper-1 is the Open Source version large-v2 of whisper. " +
+                    "GPT-4o Transcribe models are optimized for audio transcription tasks. " +
+                    "All files are transcoded to AAC audio format.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

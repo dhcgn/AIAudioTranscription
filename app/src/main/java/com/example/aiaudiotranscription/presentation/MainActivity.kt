@@ -86,7 +86,7 @@ private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
 sealed class ProcessingState {
     data object Idle : ProcessingState()
     data object CopyingMedia : ProcessingState()
-    data object RecodingToOpus : ProcessingState()
+    data object RecodingToAAC : ProcessingState()
     data object UploadingToWhisper : ProcessingState()
     data object DownloadingResponse : ProcessingState()
     data object CleaningUpWithAI : ProcessingState()
@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             try {
-                processingState.value = ProcessingState.RecodingToOpus
+                processingState.value = ProcessingState.RecodingToAAC
                 val processedFile = fileProcessingManager.processAudioFile(uri)
                 
                 // Add file size check here
@@ -556,7 +556,7 @@ fun MainContent(
                 val buttonText = when (processingState) {
                     ProcessingState.Idle -> "Select File and Transcribe"
                     ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToOpus -> "Re-encode to M4A..."
+                    ProcessingState.RecodingToAAC -> "Re-encode to M4A..."
                     ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
                     ProcessingState.DownloadingResponse -> "Downloading Response..."
                     ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."

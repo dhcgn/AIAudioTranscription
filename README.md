@@ -13,9 +13,7 @@ This app lets you easily transcribe media files (audio or video) using AI. Users
 - **Media Handling:**  
   - Select, share, or open media files directly from your device.
   - Direct transcription of voice messages from messaging apps like WhatsApp, Telegram, or Signal.
-  - Automatic re-encoding using FFmpegKit:  
-    - To **Opus** format for Whisper-1 model.
-    - To **M4A/AAC** format for GPT-4o Transcribe models.
+  - Automatic re-encoding using FFmpegKit to **M4A/AAC** format for all transcription models.
   - File size check (max. 24MB after processing) to ensure smooth operation.
 
 - **Multiple Transcription Models:**  
@@ -54,7 +52,7 @@ This app lets you easily transcribe media files (audio or video) using AI. Users
 
 2. **Media Processing:**  
    - Select a media file, or share one to the app.
-   - The file is copied, re-encoded (to opus or mp3 as appropriate), and its size is validated.
+   - The file is copied, re-encoded to AAC format, and its size is validated.
 
 3. **Transcription & Cleanup:**  
    - The processed file is uploaded to the selected transcription API.
@@ -72,7 +70,7 @@ graph TD
     A[Start] --> B[Enter & Test API Key in Settings]
     B --> C[Select Transcription Model & Set Prompts]
     C --> D[Choose Media File / Share to App]
-    D --> E["Copy & Re-encode File (Opus/M4A)"]
+    D --> E["Copy & Re-encode File (M4A/AAC)"]
     E --> F["File Size Check (<= 24MB)"]
     F --> G[Upload to Selected Transcription API]
     G --> H{Response Successful?}
