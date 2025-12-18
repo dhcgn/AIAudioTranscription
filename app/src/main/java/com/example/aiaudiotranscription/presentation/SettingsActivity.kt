@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.aiaudiotranscription.api.MODEL_GPT
+import com.example.aiaudiotranscription.api.MODEL_GPT_TEXT
 import com.example.aiaudiotranscription.api.MODEL_WHISPER
 import com.example.aiaudiotranscription.api.MODEL_GPT_4O_TRANSCRIBE
 import com.example.aiaudiotranscription.api.MODEL_GPT_4O_MINI_TRANSCRIBE
@@ -82,7 +82,7 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
         cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(context)
-        selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
+        selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_GPT_4O_MINI_TRANSCRIBE)
         language = SharedPrefsUtils.getLanguage(context)
         whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
         gptPrompt = SharedPrefsUtils.getGptPrompt(context)
@@ -484,8 +484,8 @@ private fun testApiKey(context: Context, apiKey: String, onResult: (List<ModelSt
                             modelIds.contains(MODEL_WHISPER)
                         ),
                         ModelStatus(
-                            "GPT Model (${MODEL_GPT})", 
-                            modelIds.contains(MODEL_GPT)
+                            "GPT Model (${MODEL_GPT_TEXT})",
+                            modelIds.contains(MODEL_GPT_TEXT)
                         ),
                         ModelStatus(
                             "GPT-4o Transcribe Model (${MODEL_GPT_4O_TRANSCRIBE})", 
