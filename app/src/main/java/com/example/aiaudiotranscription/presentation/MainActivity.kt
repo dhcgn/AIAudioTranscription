@@ -378,15 +378,11 @@ class MainActivity : ComponentActivity() {
                     onComplete(cleanedText)
                 } else {
                     // On error, show the original transcription and notify user
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, cleanedText, Toast.LENGTH_LONG).show()
-                    }
+                    Toast.makeText(this@MainActivity, cleanedText, Toast.LENGTH_LONG).show()
                     onComplete(transcriptionText)
                 }
             } catch (e: Exception) {
-                runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Auto-cleanup failed: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                Toast.makeText(this@MainActivity, "Auto-cleanup failed: ${e.message}", Toast.LENGTH_LONG).show()
                 onComplete(transcriptionText)
             } finally {
                 processingState.value = ProcessingState.Idle
