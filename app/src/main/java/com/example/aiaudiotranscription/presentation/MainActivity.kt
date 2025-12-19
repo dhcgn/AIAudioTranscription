@@ -29,9 +29,12 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -250,12 +253,19 @@ class MainActivity : ComponentActivity() {
                                     model = selectedModel // Include model information
                                 )
                             )
-                            onComplete(transcriptionText)
+                            
+                            // Check if auto-cleanup is enabled
+                            if (SharedPrefsUtils.getAutoCleanup(context)) {
+                                performAutoCleanup(transcriptionText, onComplete)
+                            } else {
+                                onComplete(transcriptionText)
+                                processingState.value = ProcessingState.Idle
+                            }
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
+                            processingState.value = ProcessingState.Idle
                         }
-                        processingState.value = ProcessingState.Idle
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
@@ -300,12 +310,19 @@ class MainActivity : ComponentActivity() {
                                     model = selectedModel // Include model information
                                 )
                             )
-                            onComplete(transcriptionText)
+                            
+                            // Check if auto-cleanup is enabled
+                            if (SharedPrefsUtils.getAutoCleanup(context)) {
+                                performAutoCleanup(transcriptionText, onComplete)
+                            } else {
+                                onComplete(transcriptionText)
+                                processingState.value = ProcessingState.Idle
+                            }
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
+                            processingState.value = ProcessingState.Idle
                         }
-                        processingState.value = ProcessingState.Idle
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
@@ -351,6 +368,42 @@ class MainActivity : ComponentActivity() {
                 }
             } catch (e: Exception) {
                 "Error during cleanup: ${e.message ?: "Unknown error"}"
+            }
+        }
+    }
+
+    private fun performAutoCleanup(transcriptionText: String, onComplete: (String) -> Unit) {
+        processingState.value = ProcessingState.CleaningUpWithAI
+        lifecycleScope.launch {
+            try {
+                val cleanedText = cleanupWithAI(transcriptionText)
+                if (!cleanedText.startsWith("Error")) {
+                    // Save cleaned version to history
+                    val dbHelper = TranscriptionDbHelper(this@MainActivity)
+                    dbHelper.addTranscription(
+                        TranscriptionEntry(
+                            text = cleanedText,
+                            language = languageState.value,
+                            prompt = "Auto-cleaned version of transcription",
+                            sourceHint = "AI Auto-Cleanup",
+                            model = SharedPrefsUtils.getTranscriptionModel(this@MainActivity, MODEL_WHISPER)
+                        )
+                    )
+                    onComplete(cleanedText)
+                } else {
+                    // On error, show the original transcription and notify user
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, cleanedText, Toast.LENGTH_LONG).show()
+                    }
+                    onComplete(transcriptionText)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Auto-cleanup failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+                onComplete(transcriptionText)
+            } finally {
+                processingState.value = ProcessingState.Idle
             }
         }
     }
@@ -539,6 +592,49 @@ fun MainContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Progress indicator card - shows current processing step
+        if (processingState != ProcessingState.Idle) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "Processing...",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = when (processingState) {
+                            ProcessingState.CopyingMedia -> "📋 Copying media file from source"
+                            ProcessingState.RecodingToAAC -> "🎵 Re-encoding to M4A/AAC format"
+                            ProcessingState.UploadingToWhisper -> "☁️ Uploading to transcription service"
+                            ProcessingState.DownloadingResponse -> "⬇️ Downloading transcription response"
+                            ProcessingState.CleaningUpWithAI -> "✨ Cleaning up text with AI"
+                            else -> "⚙️ Processing..."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
 
         // First row - Main action button
         Row(

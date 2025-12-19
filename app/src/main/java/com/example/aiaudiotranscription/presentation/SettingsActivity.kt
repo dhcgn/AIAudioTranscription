@@ -77,6 +77,7 @@ fun SettingsScreen(
     var language by remember { mutableStateOf("") }
     var whisperPrompt by remember { mutableStateOf("") }
     var gptPrompt by remember { mutableStateOf("") }
+    var autoCleanup by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -86,6 +87,7 @@ fun SettingsScreen(
         language = SharedPrefsUtils.getLanguage(context)
         whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
         gptPrompt = SharedPrefsUtils.getGptPrompt(context)
+        autoCleanup = SharedPrefsUtils.getAutoCleanup(context)
     }
 
     Column(
@@ -311,6 +313,37 @@ fun SettingsScreen(
             modifier = Modifier.align(Alignment.End)
         ) {
             Text("Reset to Default")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Auto Cleanup Toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Automatic Transcript Cleanup",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "When enabled, transcriptions are automatically cleaned up after each transcription for better readability.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = autoCleanup,
+                onCheckedChange = { 
+                    autoCleanup = it
+                    SharedPrefsUtils.saveAutoCleanup(context, it)
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
