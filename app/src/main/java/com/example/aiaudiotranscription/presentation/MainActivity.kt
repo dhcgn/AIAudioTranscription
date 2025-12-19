@@ -242,25 +242,7 @@ class MainActivity : ComponentActivity() {
                         processingState.value = ProcessingState.DownloadingResponse
                         if (response.isSuccessful) {
                             val transcriptionText = response.body()?.text ?: "No transcription found."
-                            // Save to history
-                            val dbHelper = TranscriptionDbHelper(context)
-                            dbHelper.addTranscription(
-                                TranscriptionEntry(
-                                    text = transcriptionText,
-                                    language = languageState.value,
-                                    prompt = promptState.value,
-                                    sourceHint = filePath,
-                                    model = selectedModel // Include model information
-                                )
-                            )
-                            
-                            // Check if auto-cleanup is enabled
-                            if (SharedPrefsUtils.getAutoCleanup(context)) {
-                                performAutoCleanup(transcriptionText, onComplete)
-                            } else {
-                                onComplete(transcriptionText)
-                                processingState.value = ProcessingState.Idle
-                            }
+                            handleTranscriptionSuccess(transcriptionText, filePath, selectedModel, onComplete)
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
@@ -299,25 +281,7 @@ class MainActivity : ComponentActivity() {
                         processingState.value = ProcessingState.DownloadingResponse
                         if (response.isSuccessful) {
                             val transcriptionText = response.body()?.text ?: "No transcription found."
-                            // Save to history
-                            val dbHelper = TranscriptionDbHelper(context)
-                            dbHelper.addTranscription(
-                                TranscriptionEntry(
-                                    text = transcriptionText,
-                                    language = languageState.value,
-                                    prompt = promptState.value,
-                                    sourceHint = filePath,
-                                    model = selectedModel // Include model information
-                                )
-                            )
-                            
-                            // Check if auto-cleanup is enabled
-                            if (SharedPrefsUtils.getAutoCleanup(context)) {
-                                performAutoCleanup(transcriptionText, onComplete)
-                            } else {
-                                onComplete(transcriptionText)
-                                processingState.value = ProcessingState.Idle
-                            }
+                            handleTranscriptionSuccess(transcriptionText, filePath, selectedModel, onComplete)
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
@@ -372,7 +336,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun performAutoCleanup(transcriptionText: String, onComplete: (String) -> Unit) {
+    private fun handleTranscriptionSuccess(transcriptionText: String, filePath: String, selectedModel: String, onComplete: (String) -> Unit) {
+        // Save to history
+        val dbHelper = TranscriptionDbHelper(this)
+        dbHelper.addTranscription(
+            TranscriptionEntry(
+                text = transcriptionText,
+                language = languageState.value,
+                prompt = promptState.value,
+                sourceHint = filePath,
+                model = selectedModel
+            )
+        )
+        
+        // Check if auto-cleanup is enabled
+        if (SharedPrefsUtils.getAutoCleanup(this)) {
+            performAutoCleanup(transcriptionText, selectedModel, onComplete)
+        } else {
+            onComplete(transcriptionText)
+            processingState.value = ProcessingState.Idle
+        }
+    }
+
+    private fun performAutoCleanup(transcriptionText: String, model: String, onComplete: (String) -> Unit) {
         processingState.value = ProcessingState.CleaningUpWithAI
         lifecycleScope.launch {
             try {
@@ -386,7 +372,7 @@ class MainActivity : ComponentActivity() {
                             language = languageState.value,
                             prompt = "Auto-cleaned version of transcription",
                             sourceHint = "AI Auto-Cleanup",
-                            model = SharedPrefsUtils.getTranscriptionModel(this@MainActivity, MODEL_WHISPER)
+                            model = model
                         )
                     )
                     onComplete(cleanedText)
