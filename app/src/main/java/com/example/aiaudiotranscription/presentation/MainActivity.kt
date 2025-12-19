@@ -176,18 +176,23 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 processingState.value = ProcessingState.RecodingToAAC
-                val processedFile = fileProcessingManager.processAudioFile(uri)
+                val processingResult = fileProcessingManager.processAudioFile(uri)
                 
                 // Add file size check here
-                if (processedFile.length() > MAX_FILE_SIZE_BYTES) {
-                    processedFile.delete() // Clean up the file
+                if (processingResult.processedFile.length() > MAX_FILE_SIZE_BYTES) {
+                    processingResult.processedFile.delete() // Clean up the file
                     throw FileProcessingException("Audio file is too large. Maximum size is 24MB after processing.")
                 }
 
-                transcribeAudio(this@MainActivity, processedFile.absolutePath) { transcription ->
+                transcribeAudio(
+                    this@MainActivity, 
+                    processingResult.processedFile.absolutePath,
+                    processingResult.originalFileSizeBytes,
+                    processingResult.processedFileSizeBytes
+                ) { transcription ->
                     transcriptionState.value = transcription
                     processingState.value = ProcessingState.Idle
-                    processedFile.delete() // Clean up processed file after use
+                    processingResult.processedFile.delete() // Clean up processed file after use
                 }
             } catch (e: FileProcessingException) {
                 runOnUiThread {
@@ -203,7 +208,13 @@ class MainActivity : ComponentActivity() {
         lastUsedUri?.let { handleFileUri(it) }
     }
 
-    private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
+    private fun transcribeAudio(
+        context: Context, 
+        filePath: String, 
+        originalFileSizeBytes: Long,
+        uploadedFileSizeBytes: Long,
+        onComplete: (String) -> Unit
+    ) {
         val currentLanguage = languageState.value
         val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
 
@@ -247,7 +258,11 @@ class MainActivity : ComponentActivity() {
                                     language = languageState.value,
                                     prompt = promptState.value,
                                     sourceHint = filePath,
-                                    model = selectedModel // Include model information
+                                    model = selectedModel, // Include model information
+                                    originalFileSizeBytes = originalFileSizeBytes,
+                                    uploadedFileSizeBytes = uploadedFileSizeBytes,
+                                    transcriptLength = transcriptionText.length,
+                                    audioDurationSeconds = 0 // Duration not available from Whisper API
                                 )
                             )
                             onComplete(transcriptionText)
@@ -297,7 +312,11 @@ class MainActivity : ComponentActivity() {
                                     language = languageState.value,
                                     prompt = promptState.value,
                                     sourceHint = filePath,
-                                    model = selectedModel // Include model information
+                                    model = selectedModel, // Include model information
+                                    originalFileSizeBytes = originalFileSizeBytes,
+                                    uploadedFileSizeBytes = uploadedFileSizeBytes,
+                                    transcriptLength = transcriptionText.length,
+                                    audioDurationSeconds = 0 // Duration not available from GPT-4o API
                                 )
                             )
                             onComplete(transcriptionText)
@@ -503,7 +522,12 @@ fun MainContent(
                                                     language = language,
                                                     prompt = "Cleaned version of previous transcription",
                                                     sourceHint = "AI Cleanup",
-                                                    model = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER) // Include model information
+                                                    model = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER), // Include model information
+                                                    transcriptLength = cleanedText.length,
+                                                    // No file size data available for cleanup operations
+                                                    originalFileSizeBytes = 0,
+                                                    uploadedFileSizeBytes = 0,
+                                                    audioDurationSeconds = 0
                                                 )
                                             )
                                         } else {

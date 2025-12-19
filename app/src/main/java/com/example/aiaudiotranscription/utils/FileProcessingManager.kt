@@ -25,18 +25,28 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/**
+ * Result of audio file processing containing the processed file and metadata
+ */
+data class ProcessingResult(
+    val processedFile: File,
+    val originalFileSizeBytes: Long,
+    val processedFileSizeBytes: Long
+)
+
 @Singleton
 class FileProcessingManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val mp4OutputFile = File(context.filesDir, "transcription_audio.m4a")
 
-    suspend fun processAudioFile(uri: Uri): File = withContext(Dispatchers.IO) {
+    suspend fun processAudioFile(uri: Uri): ProcessingResult = withContext(Dispatchers.IO) {
         val outputFile = mp4OutputFile
 
         try {
             // 1. Copy input file
             val inputFile = copyUriToFile(uri)
+            val originalFileSize = inputFile.length()
 
             // 2. Ensure output file is clean
             if (outputFile.exists()) {
@@ -76,8 +86,14 @@ class FileProcessingManager @Inject constructor(
 
             // 4. Clean up input file
             inputFile.delete()
+            
+            val processedFileSize = outputFile.length()
 
-            outputFile
+            ProcessingResult(
+                processedFile = outputFile,
+                originalFileSizeBytes = originalFileSize,
+                processedFileSizeBytes = processedFileSize
+            )
         } catch (e: Exception) {
             // Clean up output file on error
             if (outputFile.exists()) {

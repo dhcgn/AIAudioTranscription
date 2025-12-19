@@ -33,6 +33,36 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 
+/**
+ * Format file size in bytes to human-readable format
+ */
+fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0) return "N/A"
+    val units = arrayOf("B", "KB", "MB", "GB")
+    var size = bytes.toDouble()
+    var unitIndex = 0
+    while (size >= 1024 && unitIndex < units.size - 1) {
+        size /= 1024
+        unitIndex++
+    }
+    return String.format("%.2f %s", size, units[unitIndex])
+}
+
+/**
+ * Format duration in seconds to human-readable format
+ */
+fun formatDuration(seconds: Long): String {
+    if (seconds <= 0) return "N/A"
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val secs = seconds % 60
+    return when {
+        hours > 0 -> String.format("%d:%02d:%02d", hours, minutes, secs)
+        minutes > 0 -> String.format("%d:%02d", minutes, secs)
+        else -> String.format("%ds", secs)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryTopBar(
@@ -179,6 +209,23 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                         maxLines = 3
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Always show key statistics
+                    Text(
+                        text = "Length: ${entry.transcriptLength} chars • Model: ${entry.model}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    // Show file sizes if available
+                    if (entry.uploadedFileSizeBytes > 0 || entry.originalFileSizeBytes > 0) {
+                        Text(
+                            text = "File: ${formatFileSize(entry.originalFileSizeBytes)} → ${formatFileSize(entry.uploadedFileSizeBytes)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -186,8 +233,9 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                     ) {
                         // Make the text clickable
                         Text(
-                            text = "Details",
+                            text = if (expanded) "Less details" else "More details",
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .clickable { expanded = !expanded }
                                 .padding(vertical = 8.dp) // Add padding for better touch target
@@ -201,25 +249,84 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                     }
                     
                     if (expanded) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Transcript Statistics
                         Text(
-                            text = "Language: ${entry.language}",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "Transcript Statistics:",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Prompt: ${entry.prompt}",
+                            text = "• Length: ${entry.transcriptLength} characters",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (entry.audioDurationSeconds > 0) {
+                            Text(
+                                text = "• Duration: ${formatDuration(entry.audioDurationSeconds)}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        
+                        // File Statistics (only if available)
+                        if (entry.originalFileSizeBytes > 0 || entry.uploadedFileSizeBytes > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "File Statistics:",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (entry.originalFileSizeBytes > 0) {
+                                Text(
+                                    text = "• Original file size: ${formatFileSize(entry.originalFileSizeBytes)}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            if (entry.uploadedFileSizeBytes > 0) {
+                                Text(
+                                    text = "• Uploaded file size: ${formatFileSize(entry.uploadedFileSizeBytes)}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                        
+                        // Processing Settings (only show non-empty values)
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Source: ${entry.sourceHint}",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "Processing Settings:",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Model: ${entry.model}",
+                            text = "• Model: ${entry.model}",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (entry.language.isNotEmpty()) {
+                            Text(
+                                text = "• Language: ${entry.language}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        if (entry.prompt.isNotEmpty()) {
+                            Text(
+                                text = "• Prompt: ${entry.prompt}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        if (entry.sourceHint.isNotEmpty()) {
+                            Text(
+                                text = "• Source: ${entry.sourceHint}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Date: ${dateFormat.format(entry.timestamp)}",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "• Date: ${dateFormat.format(entry.timestamp)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -261,12 +368,37 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                                     appendLine("Transcription:")
                                     appendLine(entry.text)
                                     appendLine()
-                                    appendLine("Details:")
-                                    appendLine("Language: ${entry.language}")
-                                    appendLine("Prompt: ${entry.prompt}")
-                                    appendLine("Source: ${entry.sourceHint}")
-                                    appendLine("Model: ${entry.model}")
-                                    appendLine("Date: ${dateFormat.format(entry.timestamp)}")
+                                    
+                                    appendLine("Transcript Statistics:")
+                                    appendLine("• Length: ${entry.transcriptLength} characters")
+                                    if (entry.audioDurationSeconds > 0) {
+                                        appendLine("• Duration: ${formatDuration(entry.audioDurationSeconds)}")
+                                    }
+                                    
+                                    if (entry.originalFileSizeBytes > 0 || entry.uploadedFileSizeBytes > 0) {
+                                        appendLine()
+                                        appendLine("File Statistics:")
+                                        if (entry.originalFileSizeBytes > 0) {
+                                            appendLine("• Original file size: ${formatFileSize(entry.originalFileSizeBytes)}")
+                                        }
+                                        if (entry.uploadedFileSizeBytes > 0) {
+                                            appendLine("• Uploaded file size: ${formatFileSize(entry.uploadedFileSizeBytes)}")
+                                        }
+                                    }
+                                    
+                                    appendLine()
+                                    appendLine("Processing Settings:")
+                                    appendLine("• Model: ${entry.model}")
+                                    if (entry.language.isNotEmpty()) {
+                                        appendLine("• Language: ${entry.language}")
+                                    }
+                                    if (entry.prompt.isNotEmpty()) {
+                                        appendLine("• Prompt: ${entry.prompt}")
+                                    }
+                                    if (entry.sourceHint.isNotEmpty()) {
+                                        appendLine("• Source: ${entry.sourceHint}")
+                                    }
+                                    appendLine("• Date: ${dateFormat.format(entry.timestamp)}")
                                 }
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 val clip = ClipData.newPlainText("Transcription with Details", detailedText)
@@ -334,29 +466,41 @@ fun HistoryScreenPreview() {
         TranscriptionEntry(
             id = 1,
             text = "This is a sample transcription of an interview. The audio quality was good and the speaker was clear.",
-            language = "English",
+            language = "en",
             prompt = "Interview transcription",
             sourceHint = "interview.mp3",
             model = "whisper-1",
-            timestamp = Date()
+            timestamp = Date(),
+            originalFileSizeBytes = 5_242_880, // 5 MB
+            uploadedFileSizeBytes = 2_621_440, // 2.5 MB
+            transcriptLength = 103,
+            audioDurationSeconds = 180 // 3 minutes
         ),
         TranscriptionEntry(
             id = 2,
             text = "Dies ist eine Beispieltranskription auf Deutsch. Die Audioqualität war ausgezeichnet.",
-            language = "German",
+            language = "de",
             prompt = "Meeting notes",
             sourceHint = "meeting_2024.m4a",
-            model = "whisper-1",
-            timestamp = Date()
+            model = "gpt-4o-audio-preview",
+            timestamp = Date(),
+            originalFileSizeBytes = 12_582_912, // 12 MB
+            uploadedFileSizeBytes = 8_388_608, // 8 MB
+            transcriptLength = 85,
+            audioDurationSeconds = 600 // 10 minutes
         ),
         TranscriptionEntry(
             id = 3,
             text = "This is a longer transcription that contains multiple sentences. It demonstrates how the card handles longer text content. The text should be truncated after three lines to keep the UI clean and consistent.",
-            language = "English",
+            language = "en",
             prompt = "Lecture transcription",
             sourceHint = "lecture_recording.wav",
-            model = "whisper-1",
-            timestamp = Date()
+            model = "gpt-4o-audio-preview-2024-12-17",
+            timestamp = Date(),
+            originalFileSizeBytes = 20_971_520, // 20 MB
+            uploadedFileSizeBytes = 15_728_640, // 15 MB
+            transcriptLength = 196,
+            audioDurationSeconds = 1800 // 30 minutes
         )
     )
 
