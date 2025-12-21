@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.aiaudiotranscription"
+    namespace = "app.hdev.io.aitranscribe"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.aiaudiotranscription"
+        applicationId = "app.hdev.io.aitranscribe"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
