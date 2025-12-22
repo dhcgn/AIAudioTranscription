@@ -279,7 +279,10 @@ class MainActivity : ComponentActivity() {
         lastUsedUri?.let { handleFileUri(it) }
     }
 
-    // Add this function to clear the selected file
+    /**
+     * Clears the selected file by resetting the URI and file path state.
+     * This will hide the selected file box and disable the retry button.
+     */
     private fun clearSelectedFile() {
         lastUsedUri = null
         selectedFilePathState.value = ""
@@ -489,7 +492,6 @@ fun AppTopBarPreview() {
 @Composable
 fun MainContent(
     onPickFile: () -> Unit,
-    // Add onRetry parameter
     onRetry: () -> Unit,
     onClearFile: () -> Unit,
     transcription: String,
