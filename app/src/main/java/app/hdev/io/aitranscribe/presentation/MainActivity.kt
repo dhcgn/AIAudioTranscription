@@ -36,6 +36,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -406,32 +407,37 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar() {
-    TopAppBar(
-        title = {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "AI Universal Transcriber",
-                    )
-                    if (BuildConfig.DEBUG) {
-                        Text(
-                            " (Debug)",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
-                }
+    Surface(
+        tonalElevation = 3.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(top = 8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Transcribe media files with OpenAI's Whisper and GPT-4o Transcribe models by using your own API key.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = LocalContentColor.current.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(end = 50.dp)
+                    "AI Universal Transcriber",
+                    style = MaterialTheme.typography.titleLarge
                 )
+                if (BuildConfig.DEBUG) {
+                    Text(
+                        " (Debug)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
-        },
-        modifier = Modifier.padding(top = 16.dp)
-    )
+            Text(
+                "Transcribe media files with OpenAI's Whisper and GPT-4o Transcribe models by using your own API key.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = LocalContentColor.current.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
 }
 
 @Preview(showBackground = true)
