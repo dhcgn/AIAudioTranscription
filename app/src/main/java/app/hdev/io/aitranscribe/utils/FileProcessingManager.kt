@@ -25,18 +25,30 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/**
+ * Result of audio file processing containing the processed file and metadata
+ */
+data class ProcessingResult(
+    val processedFile: File,
+    val originalFileSizeBytes: Long,
+    val processedFileSizeBytes: Long,
+    val originalFileName: String? = null
+)
+
 @Singleton
 class FileProcessingManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val mp4OutputFile = File(context.filesDir, "transcription_audio.m4a")
 
-    suspend fun processAudioFile(uri: Uri): File = withContext(Dispatchers.IO) {
+    suspend fun processAudioFile(uri: Uri): ProcessingResult = withContext(Dispatchers.IO) {
         val outputFile = mp4OutputFile
 
         try {
-            // 1. Copy input file
+            // 1. Copy input file and extract original filename
             val inputFile = copyUriToFile(uri)
+            val originalFileSize = inputFile.length()
+            val originalFileName = getFileNameFromUri(uri)
 
             // 2. Ensure output file is clean
             if (outputFile.exists()) {
@@ -76,8 +88,15 @@ class FileProcessingManager @Inject constructor(
 
             // 4. Clean up input file
             inputFile.delete()
+            
+            val processedFileSize = outputFile.length()
 
-            outputFile
+            ProcessingResult(
+                processedFile = outputFile,
+                originalFileSizeBytes = originalFileSize,
+                processedFileSizeBytes = processedFileSize,
+                originalFileName = originalFileName
+            )
         } catch (e: Exception) {
             // Clean up output file on error
             if (outputFile.exists()) {
@@ -144,6 +163,19 @@ class FileProcessingManager @Inject constructor(
             }
         } ?: throw FileProcessingException("Could not open input stream for URI")
         tempFile
+    }
+    
+    private fun getFileNameFromUri(uri: Uri): String? {
+        // Try to get the display name from the content resolver
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (nameIndex != -1 && cursor.moveToFirst()) {
+                return cursor.getString(nameIndex)
+            }
+        }
+        
+        // Fallback to the last path segment
+        return uri.lastPathSegment
     }
 }
 

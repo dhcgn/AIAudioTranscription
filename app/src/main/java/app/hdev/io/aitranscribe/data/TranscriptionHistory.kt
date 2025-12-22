@@ -13,14 +13,19 @@ data class TranscriptionEntry(
     val prompt: String = "",       // Add default values
     val sourceHint: String = "",   // Add default values
     val model: String = "whisper-1", // Add default value
-    val timestamp: Date = Date()
+    val timestamp: Date = Date(),
+    // Statistics
+    val originalFileSizeBytes: Long = 0,  // Size of original file before processing
+    val uploadedFileSizeBytes: Long = 0,  // Size of file after processing/encoding
+    val transcriptLength: Int = 0,        // Character count of transcript text
+    val audioDurationSeconds: Long = 0     // Duration of audio in seconds (if available)
 )
 
 class TranscriptionDbHelper(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
-        const val DATABASE_VERSION = 2 // Updated version
+        const val DATABASE_VERSION = 3 // Updated version for statistics
         const val DATABASE_NAME = "TranscriptionHistory.db"
 
         private const val SQL_CREATE_ENTRIES = """
@@ -30,8 +35,12 @@ class TranscriptionDbHelper(context: Context) :
                 language TEXT,
                 prompt TEXT,
                 source_hint TEXT,
-                model TEXT, -- Added model column
-                timestamp INTEGER
+                model TEXT,
+                timestamp INTEGER,
+                original_file_size_bytes INTEGER,
+                uploaded_file_size_bytes INTEGER,
+                transcript_length INTEGER,
+                audio_duration_seconds INTEGER
             )
         """
     }
@@ -43,6 +52,13 @@ class TranscriptionDbHelper(context: Context) :
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE transcriptions ADD COLUMN model TEXT")
+        }
+        if (oldVersion < 3) {
+            // Add statistics columns
+            db.execSQL("ALTER TABLE transcriptions ADD COLUMN original_file_size_bytes INTEGER DEFAULT 0")
+            db.execSQL("ALTER TABLE transcriptions ADD COLUMN uploaded_file_size_bytes INTEGER DEFAULT 0")
+            db.execSQL("ALTER TABLE transcriptions ADD COLUMN transcript_length INTEGER DEFAULT 0")
+            db.execSQL("ALTER TABLE transcriptions ADD COLUMN audio_duration_seconds INTEGER DEFAULT 0")
         }
     }
 
@@ -61,6 +77,10 @@ class TranscriptionDbHelper(context: Context) :
             put("source_hint", entry.sourceHint)
             put("model", entry.model) // Store model information
             put("timestamp", entry.timestamp.time)
+            put("original_file_size_bytes", entry.originalFileSizeBytes)
+            put("uploaded_file_size_bytes", entry.uploadedFileSizeBytes)
+            put("transcript_length", entry.transcriptLength)
+            put("audio_duration_seconds", entry.audioDurationSeconds)
         }
         return db.insert("transcriptions", null, values)
     }
@@ -88,7 +108,11 @@ class TranscriptionDbHelper(context: Context) :
                         prompt = getString(getColumnIndexOrThrow("prompt")) ?: "",
                         sourceHint = getString(getColumnIndexOrThrow("source_hint")) ?: "",
                         model = getString(getColumnIndexOrThrow("model")) ?: "whisper-1",
-                        timestamp = Date(getLong(getColumnIndexOrThrow("timestamp")))
+                        timestamp = Date(getLong(getColumnIndexOrThrow("timestamp"))),
+                        originalFileSizeBytes = getLong(getColumnIndexOrThrow("original_file_size_bytes")),
+                        uploadedFileSizeBytes = getLong(getColumnIndexOrThrow("uploaded_file_size_bytes")),
+                        transcriptLength = getInt(getColumnIndexOrThrow("transcript_length")),
+                        audioDurationSeconds = getLong(getColumnIndexOrThrow("audio_duration_seconds"))
                     )
                 )
             }
