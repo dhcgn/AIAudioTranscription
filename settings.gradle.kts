@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AIAudioTranscription"
+rootProject.name = "AI Universal Transcriber"
 include(":app")
