@@ -596,13 +596,13 @@ fun MainContent(
             ) {
                 Text(
                     text = when (processingState) {
+                        ProcessingState.Idle -> "" // Should not reach here due to outer if condition
                         ProcessingState.CopyingMedia -> "Copying Media File..."
                         ProcessingState.EncodingAudio -> "Encoding to Optimized Audio Format..."
                         ProcessingState.UploadingForTranscription -> "Uploading to OpenAI for Transcription..."
                         ProcessingState.WaitingForTranscription -> "Waiting for OpenAI Transcription..."
                         ProcessingState.UploadingForReformat -> "Uploading to OpenAI for Reformat..."
                         ProcessingState.WaitingForReformat -> "Waiting for OpenAI to Reformat..."
-                        else -> ""
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary
