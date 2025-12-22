@@ -14,7 +14,8 @@ object SharedPrefsUtils {
     private const val TRANSCRIPTION_MODEL_KEY = "transcription_model"
     private const val WHISPER_PROMPT_KEY = "whisper_prompt"
     private const val GPT_PROMPT_KEY = "gpt_prompt"
-    private const val CLEANUP_PROMPT_KEY = "cleanup_prompt"
+    private const val REFORMAT_PROMPT_KEY = "cleanup_prompt"  // Keep old key for backward compatibility
+    private const val AUTO_FORMAT_KEY = "auto_format"
 
     // Default Values
     const val DEFAULT_WHISPER_PROMPT = "voice message of one person"
@@ -24,12 +25,12 @@ When words are unclear, make well-educated guesses based on context and language
 If an ISO 639 language code is provided, ensure the transcription respects the specified language. If not, keep the language of the transcribe the same as of the audio.
 Return only the transcription — no additional commentary, explanations, or extraneous text."""
 
-    const val DEFAULT_CLEANUP_PROMPT = """This is a transcript of a voice message, help to enhanced the readability.
+    const val DEFAULT_REFORMAT_PROMPT = """This is a transcript of a voice message, help to enhance the readability.
 
-- enhanced the readability by adding punctuation, capitalization and paragraphs.
+- enhance the readability by adding punctuation, capitalization and paragraphs.
 - be very careful not to alter information.
 - Keep the original language of the transcript I give you. 
-- The language of your enhanced version must also the same as the transcript. 
+- The language of your enhanced version must also be the same as the transcript. 
 - Respond ONLY with the enhanced transcript, without any other text.
 
 Transcript:
@@ -101,13 +102,22 @@ Transcript:
             ?: DEFAULT_GPT_PROMPT
     }
 
-    // Cleanup Prompt
-    fun saveCleanupPrompt(context: Context, prompt: String) {
-        getNormalPrefs(context).edit().putString(CLEANUP_PROMPT_KEY, prompt).apply()
+    // Reformat Prompt (previously Cleanup)
+    fun saveReformatPrompt(context: Context, prompt: String) {
+        getNormalPrefs(context).edit().putString(REFORMAT_PROMPT_KEY, prompt).apply()
     }
 
-    fun getCleanupPrompt(context: Context): String {
-        return getNormalPrefs(context).getString(CLEANUP_PROMPT_KEY, DEFAULT_CLEANUP_PROMPT) 
-            ?: DEFAULT_CLEANUP_PROMPT
+    fun getReformatPrompt(context: Context): String {
+        return getNormalPrefs(context).getString(REFORMAT_PROMPT_KEY, DEFAULT_REFORMAT_PROMPT) 
+            ?: DEFAULT_REFORMAT_PROMPT
+    }
+
+    // Auto Format
+    fun saveAutoFormat(context: Context, enabled: Boolean) {
+        getNormalPrefs(context).edit().putBoolean(AUTO_FORMAT_KEY, enabled).apply()
+    }
+
+    fun getAutoFormat(context: Context): Boolean {
+        return getNormalPrefs(context).getBoolean(AUTO_FORMAT_KEY, false)
     }
 }

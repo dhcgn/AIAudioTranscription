@@ -32,6 +32,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -82,14 +83,16 @@ import java.io.File
 import javax.inject.Inject
 
 private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
+private const val AUTO_FORMAT_PROMPT_HINT = "Auto-formatted version"
 
 sealed class ProcessingState {
     data object Idle : ProcessingState()
     data object CopyingMedia : ProcessingState()
-    data object RecodingToAAC : ProcessingState()
-    data object UploadingToWhisper : ProcessingState()
-    data object DownloadingResponse : ProcessingState()
-    data object CleaningUpWithAI : ProcessingState()
+    data object EncodingAudio : ProcessingState()
+    data object UploadingForTranscription : ProcessingState()
+    data object WaitingForTranscription : ProcessingState()
+    data object UploadingForReformat : ProcessingState()
+    data object WaitingForReformat : ProcessingState()
 }
 
 @AndroidEntryPoint
@@ -133,7 +136,7 @@ class MainActivity : ComponentActivity() {
                         transcription = transcriptionState.value,
                         processingState = processingState.value,
                         modifier = Modifier.padding(innerPadding),
-                        onCleanupRequest = { text -> cleanupWithAI(text) },
+                        onReformatRequest = { text -> reformatWithAI(text) },
                         onProcessingStateChanged = { state -> processingState.value = state },
                         onTranscriptionUpdate = { newText -> transcriptionState.value = newText },
                         language = languageState.value,
@@ -175,7 +178,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             try {
-                processingState.value = ProcessingState.RecodingToAAC
+                processingState.value = ProcessingState.EncodingAudio
                 val processedFile = fileProcessingManager.processAudioFile(uri)
                 
                 // Add file size check here
@@ -186,7 +189,48 @@ class MainActivity : ComponentActivity() {
 
                 transcribeAudio(this@MainActivity, processedFile.absolutePath) { transcription ->
                     transcriptionState.value = transcription
-                    processingState.value = ProcessingState.Idle
+                    
+                    // Check if auto-format is enabled
+                    val autoFormatEnabled = SharedPrefsUtils.getAutoFormat(this@MainActivity)
+                    if (autoFormatEnabled && !transcription.startsWith("Error")) {
+                        // Apply automatic reformat
+                        // Note: lifecycleScope.launch is used here because we're in a callback
+                        // and need to call the suspend function reformatWithAI
+                        processingState.value = ProcessingState.UploadingForReformat
+                        lifecycleScope.launch {
+                            try {
+                                processingState.value = ProcessingState.WaitingForReformat
+                                val reformattedText = reformatWithAI(transcription)
+                                if (!reformattedText.startsWith("Error")) {
+                                    transcriptionState.value = reformattedText
+                                    // Save reformatted version to history
+                                    val dbHelper = TranscriptionDbHelper(this@MainActivity)
+                                    dbHelper.addTranscription(
+                                        TranscriptionEntry(
+                                            text = reformattedText,
+                                            language = languageState.value,
+                                            prompt = AUTO_FORMAT_PROMPT_HINT,
+                                            sourceHint = processedFile.absolutePath,
+                                            model = SharedPrefsUtils.getTranscriptionModel(this@MainActivity, MODEL_WHISPER)
+                                        )
+                                    )
+                                } else {
+                                    runOnUiThread {
+                                        Toast.makeText(this@MainActivity, "Auto-reformat failed: $reformattedText", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, "Auto-reformat error: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            } finally {
+                                processingState.value = ProcessingState.Idle
+                            }
+                        }
+                    } else {
+                        processingState.value = ProcessingState.Idle
+                    }
+                    
                     processedFile.delete() // Clean up processed file after use
                 }
             } catch (e: FileProcessingException) {
@@ -212,6 +256,9 @@ class MainActivity : ComponentActivity() {
 
         val file = File(filePath)
         
+        // Set uploading state
+        processingState.value = ProcessingState.UploadingForTranscription
+        
         if (selectedModel == MODEL_WHISPER) {
             // Existing Whisper implementation
             // Updated to audio/mp4 as we always output M4A/AAC now
@@ -236,7 +283,7 @@ class MainActivity : ComponentActivity() {
                         call: Call<WhisperResponse>,
                         response: Response<WhisperResponse>
                     ) {
-                        processingState.value = ProcessingState.DownloadingResponse
+                        processingState.value = ProcessingState.WaitingForTranscription
                         if (response.isSuccessful) {
                             val transcriptionText = response.body()?.text ?: "No transcription found."
                             // Save to history
@@ -254,8 +301,8 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
+                            processingState.value = ProcessingState.Idle
                         }
-                        processingState.value = ProcessingState.Idle
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
@@ -286,7 +333,7 @@ class MainActivity : ComponentActivity() {
                         call: Call<WhisperResponse>,
                         response: Response<WhisperResponse>
                     ) {
-                        processingState.value = ProcessingState.DownloadingResponse
+                        processingState.value = ProcessingState.WaitingForTranscription
                         if (response.isSuccessful) {
                             val transcriptionText = response.body()?.text ?: "No transcription found."
                             // Save to history
@@ -304,8 +351,8 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
+                            processingState.value = ProcessingState.Idle
                         }
-                        processingState.value = ProcessingState.Idle
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
@@ -320,17 +367,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun cleanupWithAI(text: String): String {
+    private suspend fun reformatWithAI(text: String): String {
         return withContext(Dispatchers.IO) {
             try {
                 val retrofit = RetrofitClient.create(this@MainActivity)
                 val apiService = retrofit.create(OpenAiApiService::class.java)
                 
-                val cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(this@MainActivity)
-                if (!cleanupPrompt.contains("{{message}}")) {
-                    throw Exception("Cleanup prompt must contain {{message}} placeholder")
+                val reformatPrompt = SharedPrefsUtils.getReformatPrompt(this@MainActivity)
+                if (!reformatPrompt.contains("{{message}}")) {
+                    throw Exception("Reformat prompt must contain {{message}} placeholder")
                 }
-                val prompt = cleanupPrompt.replace("{{message}}", text)
+                val prompt = reformatPrompt.replace("{{message}}", text)
 
                 val request = ChatRequest(
                     messages = listOf(
@@ -350,7 +397,7 @@ class MainActivity : ComponentActivity() {
                     throw Exception("API Error: ${response.code()} - $errorBody")
                 }
             } catch (e: Exception) {
-                "Error during cleanup: ${e.message ?: "Unknown error"}"
+                "Error during reformat: ${e.message ?: "Unknown error"}"
             }
         }
     }
@@ -404,7 +451,7 @@ fun MainContent(
     transcription: String,
     processingState: ProcessingState,
     modifier: Modifier = Modifier,
-    onCleanupRequest: suspend (String) -> String,
+    onReformatRequest: suspend (String) -> String,
     onProcessingStateChanged: (ProcessingState) -> Unit,
     onTranscriptionUpdate: (String) -> Unit,
     language: String,
@@ -489,25 +536,26 @@ fun MainContent(
                     IconButton(
                         onClick = {
                             if (transcription.isNotEmpty()) {
-                                onProcessingStateChanged(ProcessingState.CleaningUpWithAI)
+                                onProcessingStateChanged(ProcessingState.UploadingForReformat)
                                 scope.launch {
                                     try {
-                                        val cleanedText = onCleanupRequest(transcription)
-                                        if (!cleanedText.startsWith("Error")) {
-                                            onTranscriptionUpdate(cleanedText)
-                                            // Save cleaned version to history
+                                        onProcessingStateChanged(ProcessingState.WaitingForReformat)
+                                        val reformattedText = onReformatRequest(transcription)
+                                        if (!reformattedText.startsWith("Error")) {
+                                            onTranscriptionUpdate(reformattedText)
+                                            // Save reformatted version to history
                                             val dbHelper = TranscriptionDbHelper(context)
                                             dbHelper.addTranscription(
                                                 TranscriptionEntry(
-                                                    text = cleanedText,
+                                                    text = reformattedText,
                                                     language = language,
-                                                    prompt = "Cleaned version of previous transcription",
-                                                    sourceHint = "AI Cleanup",
+                                                    prompt = "Reformatted version of previous transcription",
+                                                    sourceHint = "AI Reformat",
                                                     model = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER) // Include model information
                                                 )
                                             )
                                         } else {
-                                            Toast.makeText(context, cleanedText, Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, reformattedText, Toast.LENGTH_LONG).show()
                                         }
                                     } finally {
                                         onProcessingStateChanged(ProcessingState.Idle)
@@ -525,11 +573,11 @@ fun MainContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Cleanup",
+                                contentDescription = "Reformat",
                                 modifier = Modifier.scale(0.7f)
                             )
                             Text(
-                                text ="Cleanup with AI",
+                                text ="Reformat with AI",
                                 modifier = Modifier.scale(0.8f)
                             )
                         }
@@ -539,6 +587,33 @@ fun MainContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Progress indicator section
+        if (processingState != ProcessingState.Idle) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = when (processingState) {
+                        ProcessingState.Idle -> "" // Should not reach here due to outer if condition
+                        ProcessingState.CopyingMedia -> "Copying Media File..."
+                        ProcessingState.EncodingAudio -> "Encoding to Optimized Audio Format..."
+                        ProcessingState.UploadingForTranscription -> "Uploading to OpenAI for Transcription..."
+                        ProcessingState.WaitingForTranscription -> "Waiting for OpenAI Transcription..."
+                        ProcessingState.UploadingForReformat -> "Uploading to OpenAI for Reformat..."
+                        ProcessingState.WaitingForReformat -> "Waiting for OpenAI to Reformat..."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
 
         // First row - Main action button
         Row(
@@ -552,18 +627,8 @@ fun MainContent(
                 enabled = processingState == ProcessingState.Idle,
                 modifier = Modifier.weight(1f)
             ) {
-                val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
-                val buttonText = when (processingState) {
-                    ProcessingState.Idle -> "Select File and Transcribe"
-                    ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.RecodingToAAC -> "Re-encode to M4A..."
-                    ProcessingState.UploadingToWhisper -> "Uploading to Whisper..."
-                    ProcessingState.DownloadingResponse -> "Downloading Response..."
-                    ProcessingState.CleaningUpWithAI -> "Cleaning Up Text with AI..."
-                    else -> {"Unknown State"}
-                }
                 Text(
-                    buttonText,
+                    "Select File and Transcribe",
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -626,7 +691,7 @@ fun MainContentPreview() {
             onRetry = {},
             transcription = "This is a sample transcription displayed in the preview.",
             processingState = ProcessingState.Idle,
-            onCleanupRequest = { "" },
+            onReformatRequest = { "" },
             onProcessingStateChanged = {},
             onTranscriptionUpdate = {},
             language = "en",
