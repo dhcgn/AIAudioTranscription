@@ -298,7 +298,14 @@ class MainActivity : ComponentActivity() {
         selectedFilePathState.value = ""
     }
 
-    private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
+    private fun transcribeAudio(
+        context: Context, 
+        filePath: String, 
+        originalFileSizeBytes: Long,
+        uploadedFileSizeBytes: Long,
+        originalFileName: String?,
+        onComplete: (String, String) -> Unit
+    ) {
         val currentLanguage = languageState.value
         val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
 
