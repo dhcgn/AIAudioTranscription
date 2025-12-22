@@ -301,8 +301,8 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
+                            processingState.value = ProcessingState.Idle
                         }
-                        processingState.value = ProcessingState.Idle
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
@@ -351,8 +351,8 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
                             onComplete("Error: $errorBody")
+                            processingState.value = ProcessingState.Idle
                         }
-                        processingState.value = ProcessingState.Idle
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
