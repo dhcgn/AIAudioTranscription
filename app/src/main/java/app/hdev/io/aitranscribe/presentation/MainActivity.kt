@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -137,6 +138,7 @@ class MainActivity : ComponentActivity() {
                     MainContent(
                         onPickFile = { filePicker.launch("audio/*") },
                         onRetry = { retryTranscription() },
+                        onClearFile = { clearSelectedFile() },
                         transcription = transcriptionState.value,
                         processingState = processingState.value,
                         modifier = Modifier.padding(innerPadding),
@@ -275,6 +277,12 @@ class MainActivity : ComponentActivity() {
     // Add this function to retry transcription
     private fun retryTranscription() {
         lastUsedUri?.let { handleFileUri(it) }
+    }
+
+    // Add this function to clear the selected file
+    private fun clearSelectedFile() {
+        lastUsedUri = null
+        selectedFilePathState.value = ""
     }
 
     private fun transcribeAudio(context: Context, filePath: String, onComplete: (String) -> Unit) {
@@ -483,6 +491,7 @@ fun MainContent(
     onPickFile: () -> Unit,
     // Add onRetry parameter
     onRetry: () -> Unit,
+    onClearFile: () -> Unit,
     transcription: String,
     processingState: ProcessingState,
     modifier: Modifier = Modifier,
@@ -521,17 +530,33 @@ fun MainContent(
                     .border(BorderStroke(1.dp, MaterialTheme.colorScheme.secondary))
                     .padding(8.dp)
             ) {
-                Column {
-                    Text(
-                        text = "Selected File:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Text(
-                        text = selectedFilePath,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Selected File:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        Text(
+                            text = selectedFilePath,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onClearFile,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear selected file",
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -750,6 +775,7 @@ fun MainContentPreview() {
         MainContent(
             onPickFile = {},
             onRetry = {},
+            onClearFile = {},
             transcription = "This is a sample transcription displayed in the preview.",
             processingState = ProcessingState.Idle,
             onReformatRequest = { "" },
