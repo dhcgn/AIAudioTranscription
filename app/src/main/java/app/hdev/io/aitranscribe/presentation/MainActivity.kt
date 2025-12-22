@@ -423,7 +423,7 @@ fun AppTopBar() {
                     }
                 }
                 Text(
-                    "Transcribe media files with OpenAI's Whisper and GPT-4o Transcribe models",
+                    "Transcribe media files with OpenAI's Whisper and GPT-4o Transcribe models by using your own API key.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                     modifier = Modifier.padding(end = 50.dp)
