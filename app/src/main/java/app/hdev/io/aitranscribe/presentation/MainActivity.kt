@@ -81,6 +81,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
+import android.provider.OpenableColumns
 import javax.inject.Inject
 
 private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
@@ -113,6 +114,7 @@ class MainActivity : ComponentActivity() {
     private val processingState = mutableStateOf<ProcessingState>(ProcessingState.Idle)
     private val languageState = mutableStateOf("")
     private val promptState = mutableStateOf("")
+    private val selectedFilePathState = mutableStateOf("")
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -143,7 +145,9 @@ class MainActivity : ComponentActivity() {
                         language = languageState.value,
                         onLanguageChange = { lang -> languageState.value = lang },
                         prompt = promptState.value,
-                        onPromptChange = { newPrompt -> promptState.value = newPrompt }
+                        onPromptChange = { newPrompt -> promptState.value = newPrompt },
+                        selectedFilePath = selectedFilePathState.value,
+                        hasFileSelected = lastUsedUri != null
                     )
                 }
             }
@@ -168,6 +172,11 @@ class MainActivity : ComponentActivity() {
 
     private fun handleFileUri(uri: Uri) {
         lastUsedUri = uri  // Store the URI when handling a file
+        
+        // Extract and store the file name/path
+        val fileName = getFileNameFromUri(uri)
+        selectedFilePathState.value = fileName
+        
         // Check if API key is set
         if (SharedPrefsUtils.getApiKey(this).isNullOrEmpty()) {
             Toast.makeText(this, "Please set your OpenAI API key in Settings first", Toast.LENGTH_LONG).show()
@@ -241,6 +250,25 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun getFileNameFromUri(uri: Uri): String {
+        var fileName = "Unknown file"
+        
+        // Try to get the file name from the content resolver
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) {
+                fileName = cursor.getString(nameIndex)
+            }
+        }
+        
+        // If we couldn't get the name from the cursor, try to get it from the URI path
+        if (fileName == "Unknown file") {
+            fileName = uri.lastPathSegment ?: uri.toString()
+        }
+        
+        return fileName
     }
 
     // Add this function to retry transcription
@@ -463,7 +491,9 @@ fun MainContent(
     language: String,
     onLanguageChange: (String) -> Unit,
     prompt: String,
-    onPromptChange: (String) -> Unit
+    onPromptChange: (String) -> Unit,
+    selectedFilePath: String = "",
+    hasFileSelected: Boolean = false
 ) {
     var isApiKeySet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -481,6 +511,30 @@ fun MainContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(4.dp))
+
+        // Display selected file path if available
+        if (selectedFilePath.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(BorderStroke(1.dp, MaterialTheme.colorScheme.secondary))
+                    .padding(8.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "Selected File:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Text(
+                        text = selectedFilePath,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         // Transcription Text Box
         Box(
@@ -641,7 +695,7 @@ fun MainContent(
 
             Button(
                 onClick = onRetry,
-                enabled = processingState == ProcessingState.Idle,
+                enabled = processingState == ProcessingState.Idle && hasFileSelected,
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
@@ -703,7 +757,9 @@ fun MainContentPreview() {
             language = "en",
             onLanguageChange = {},
             prompt = "voice message of one person",
-            onPromptChange = {}
+            onPromptChange = {},
+            selectedFilePath = "sample_audio.mp3",
+            hasFileSelected = true
         )
     }
 }
