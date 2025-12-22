@@ -414,7 +414,7 @@ fun AppTopBar() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                .padding(top = 8.dp)
+                .padding(top = 20.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -434,7 +434,7 @@ fun AppTopBar() {
                 "Transcribe media files with OpenAI's Whisper and GPT-4o Transcribe models by using your own API key.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = LocalContentColor.current.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 3.dp)
             )
         }
     }
@@ -480,7 +480,7 @@ fun MainContent(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Transcription Text Box
         Box(
