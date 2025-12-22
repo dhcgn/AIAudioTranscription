@@ -82,6 +82,7 @@ import java.io.File
 import javax.inject.Inject
 
 private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
+private const val AUTO_FORMAT_PROMPT_HINT = "Auto-formatted version"
 
 sealed class ProcessingState {
     data object Idle : ProcessingState()
@@ -191,6 +192,8 @@ class MainActivity : ComponentActivity() {
                     val autoFormatEnabled = SharedPrefsUtils.getAutoFormat(this@MainActivity)
                     if (autoFormatEnabled && !transcription.startsWith("Error")) {
                         // Apply automatic cleanup
+                        // Note: lifecycleScope.launch is used here because we're in a callback
+                        // and need to call the suspend function cleanupWithAI
                         processingState.value = ProcessingState.CleaningUpWithAI
                         lifecycleScope.launch {
                             try {
@@ -203,7 +206,7 @@ class MainActivity : ComponentActivity() {
                                         TranscriptionEntry(
                                             text = cleanedText,
                                             language = languageState.value,
-                                            prompt = "Auto-formatted version",
+                                            prompt = AUTO_FORMAT_PROMPT_HINT,
                                             sourceHint = processedFile.absolutePath,
                                             model = SharedPrefsUtils.getTranscriptionModel(this@MainActivity, MODEL_WHISPER)
                                         )

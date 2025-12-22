@@ -335,7 +335,7 @@ fun SettingsScreen(
                 text = "Auto format",
                 style = MaterialTheme.typography.bodyLarge
             )
-            androidx.compose.material3.Switch(
+            Switch(
                 checked = autoFormat,
                 onCheckedChange = { 
                     autoFormat = it
