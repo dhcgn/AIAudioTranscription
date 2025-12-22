@@ -72,7 +72,7 @@ fun SettingsScreen(
     var apiKeyInput by remember { mutableStateOf("") }
     var storedApiKey by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf<List<ModelStatus>>(emptyList()) }
-    var cleanupPrompt by remember { mutableStateOf("") }
+    var reformatPrompt by remember { mutableStateOf("") }
     var selectedModel by remember { mutableStateOf("") }
     var language by remember { mutableStateOf("") }
     var whisperPrompt by remember { mutableStateOf("") }
@@ -82,7 +82,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
-        cleanupPrompt = SharedPrefsUtils.getCleanupPrompt(context)
+        reformatPrompt = SharedPrefsUtils.getReformatPrompt(context)
         selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_GPT_4O_MINI_TRANSCRIBE)
         language = SharedPrefsUtils.getLanguage(context)
         whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
@@ -282,23 +282,23 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Cleanup prompt section with reset button underneath
-        Text("AI Cleanup Prompt", style = MaterialTheme.typography.titleMedium)
+        // Reformat prompt section with reset button underneath
+        Text("AI Reformat Prompt", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "This prompt is only for the action to clean up the transcript for better " +
-                    "readability and with maintain in content.",
+            text = "This prompt is used to reformat the transcript for better " +
+                    "readability while maintaining the original content.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
-            value = cleanupPrompt,
+            value = reformatPrompt,
             onValueChange = { 
-                cleanupPrompt = it
-                SharedPrefsUtils.saveCleanupPrompt(context, it)
+                reformatPrompt = it
+                SharedPrefsUtils.saveReformatPrompt(context, it)
             },
-            label = { Text("AI Cleanup Prompt") },
+            label = { Text("AI Reformat Prompt") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3
         )
@@ -307,8 +307,8 @@ fun SettingsScreen(
         
         Button(
             onClick = {
-                cleanupPrompt = SharedPrefsUtils.DEFAULT_CLEANUP_PROMPT
-                SharedPrefsUtils.saveCleanupPrompt(context, cleanupPrompt)
+                reformatPrompt = SharedPrefsUtils.DEFAULT_REFORMAT_PROMPT
+                SharedPrefsUtils.saveReformatPrompt(context, reformatPrompt)
             },
             modifier = Modifier.align(Alignment.End)
         ) {
