@@ -25,12 +25,12 @@ When words are unclear, make well-educated guesses based on context and language
 If an ISO 639 language code is provided, ensure the transcription respects the specified language. If not, keep the language of the transcribe the same as of the audio.
 Return only the transcription — no additional commentary, explanations, or extraneous text."""
 
-    const val DEFAULT_REFORMAT_PROMPT = """This is a transcript of a voice message, help to enhanced the readability.
+    const val DEFAULT_REFORMAT_PROMPT = """This is a transcript of a voice message, help to enhance the readability.
 
-- enhanced the readability by adding punctuation, capitalization and paragraphs.
+- enhance the readability by adding punctuation, capitalization and paragraphs.
 - be very careful not to alter information.
 - Keep the original language of the transcript I give you. 
-- The language of your enhanced version must also the same as the transcript. 
+- The language of your enhanced version must also be the same as the transcript. 
 - Respond ONLY with the enhanced transcript, without any other text.
 
 Transcript:
