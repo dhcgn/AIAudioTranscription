@@ -86,6 +86,7 @@ import javax.inject.Inject
 
 private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
 private const val AUTO_FORMAT_PROMPT_HINT = "Auto-formatted version"
+private const val UNKNOWN_FILE_NAME = "Unknown file"
 
 sealed class ProcessingState {
     data object Idle : ProcessingState()
@@ -253,18 +254,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun getFileNameFromUri(uri: Uri): String {
-        var fileName = "Unknown file"
+        var fileName = UNKNOWN_FILE_NAME
         
         // Try to get the file name from the content resolver
         contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
             if (nameIndex >= 0 && cursor.moveToFirst()) {
-                fileName = cursor.getString(nameIndex)
+                fileName = cursor.getString(nameIndex) ?: UNKNOWN_FILE_NAME
             }
         }
         
         // If we couldn't get the name from the cursor, try to get it from the URI path
-        if (fileName == "Unknown file") {
+        if (fileName == UNKNOWN_FILE_NAME) {
             fileName = uri.lastPathSegment ?: uri.toString()
         }
         
