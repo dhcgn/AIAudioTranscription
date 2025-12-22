@@ -1,7 +1,7 @@
-package com.example.aiaudiotranscription
+package app.hdev.io.aitranscribe
 
-import com.example.aiaudiotranscription.presentation.formatDuration
-import com.example.aiaudiotranscription.presentation.formatFileSize
+import app.hdev.io.aitranscribe.presentation.formatDuration
+import app.hdev.io.aitranscribe.presentation.formatFileSize
 import org.junit.Test
 import org.junit.Assert.*
 
