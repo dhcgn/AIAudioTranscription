@@ -77,6 +77,7 @@ fun SettingsScreen(
     var language by remember { mutableStateOf("") }
     var whisperPrompt by remember { mutableStateOf("") }
     var gptPrompt by remember { mutableStateOf("") }
+    var autoFormat by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -86,6 +87,7 @@ fun SettingsScreen(
         language = SharedPrefsUtils.getLanguage(context)
         whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
         gptPrompt = SharedPrefsUtils.getGptPrompt(context)
+        autoFormat = SharedPrefsUtils.getAutoFormat(context)
     }
 
     Column(
@@ -311,6 +313,35 @@ fun SettingsScreen(
             modifier = Modifier.align(Alignment.End)
         ) {
             Text("Reset to Default")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Auto-format toggle section
+        Text("Auto-format Settings", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Automatically enhance the readability of transcriptions after processing",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Auto format",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            androidx.compose.material3.Switch(
+                checked = autoFormat,
+                onCheckedChange = { 
+                    autoFormat = it
+                    SharedPrefsUtils.saveAutoFormat(context, it)
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

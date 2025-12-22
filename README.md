@@ -24,6 +24,7 @@ This app lets you easily transcribe media files (audio or video) using AI. Users
 - **AI-Powered Cleanup:**  
   - Enhance transcript readability with AI-driven cleanup using GPT-4o chat completions.
   - Customizable cleanup prompts ensure the original content is preserved while improving clarity.
+  - Optional auto-format setting to automatically enhance readability after every transcription.
 
 - **Local History & Settings:**  
   - Maintain a local history of transcriptions including details like language, prompt, source, and model used.
@@ -32,6 +33,7 @@ This app lets you easily transcribe media files (audio or video) using AI. Users
     - Save and test your OpenAI API key.  
     - Configure transcription models and language preferences.  
     - Customize prompts for both transcription and AI cleanup.
+    - Enable auto-format to automatically enhance transcriptions after processing.
 
 - **User Experience Enhancements:**  
   - Support for shared intents (from other apps) and direct file access.

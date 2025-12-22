@@ -15,6 +15,7 @@ object SharedPrefsUtils {
     private const val WHISPER_PROMPT_KEY = "whisper_prompt"
     private const val GPT_PROMPT_KEY = "gpt_prompt"
     private const val CLEANUP_PROMPT_KEY = "cleanup_prompt"
+    private const val AUTO_FORMAT_KEY = "auto_format"
 
     // Default Values
     const val DEFAULT_WHISPER_PROMPT = "voice message of one person"
@@ -109,5 +110,14 @@ Transcript:
     fun getCleanupPrompt(context: Context): String {
         return getNormalPrefs(context).getString(CLEANUP_PROMPT_KEY, DEFAULT_CLEANUP_PROMPT) 
             ?: DEFAULT_CLEANUP_PROMPT
+    }
+
+    // Auto Format
+    fun saveAutoFormat(context: Context, enabled: Boolean) {
+        getNormalPrefs(context).edit().putBoolean(AUTO_FORMAT_KEY, enabled).apply()
+    }
+
+    fun getAutoFormat(context: Context): Boolean {
+        return getNormalPrefs(context).getBoolean(AUTO_FORMAT_KEY, false)
     }
 }

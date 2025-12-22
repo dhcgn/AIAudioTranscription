@@ -186,7 +186,45 @@ class MainActivity : ComponentActivity() {
 
                 transcribeAudio(this@MainActivity, processedFile.absolutePath) { transcription ->
                     transcriptionState.value = transcription
-                    processingState.value = ProcessingState.Idle
+                    
+                    // Check if auto-format is enabled
+                    val autoFormatEnabled = SharedPrefsUtils.getAutoFormat(this@MainActivity)
+                    if (autoFormatEnabled && !transcription.startsWith("Error")) {
+                        // Apply automatic cleanup
+                        processingState.value = ProcessingState.CleaningUpWithAI
+                        lifecycleScope.launch {
+                            try {
+                                val cleanedText = cleanupWithAI(transcription)
+                                if (!cleanedText.startsWith("Error")) {
+                                    transcriptionState.value = cleanedText
+                                    // Save cleaned version to history
+                                    val dbHelper = TranscriptionDbHelper(this@MainActivity)
+                                    dbHelper.addTranscription(
+                                        TranscriptionEntry(
+                                            text = cleanedText,
+                                            language = languageState.value,
+                                            prompt = "Auto-formatted version",
+                                            sourceHint = processedFile.absolutePath,
+                                            model = SharedPrefsUtils.getTranscriptionModel(this@MainActivity, MODEL_WHISPER)
+                                        )
+                                    )
+                                } else {
+                                    runOnUiThread {
+                                        Toast.makeText(this@MainActivity, "Auto-format failed: $cleanedText", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, "Auto-format error: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            } finally {
+                                processingState.value = ProcessingState.Idle
+                            }
+                        }
+                    } else {
+                        processingState.value = ProcessingState.Idle
+                    }
+                    
                     processedFile.delete() // Clean up processed file after use
                 }
             } catch (e: FileProcessingException) {
