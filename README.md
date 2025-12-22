@@ -27,7 +27,12 @@ This app lets you easily transcribe media files (audio or video) using AI. Users
   - Optional auto-format setting to automatically enhance readability after every transcription.
 
 - **Local History & Settings:**  
-  - Maintain a local history of transcriptions including details like language, prompt, source, and model used.
+  - Maintain a local history of transcriptions with comprehensive statistics:
+    - Transcript length (character count)
+    - File sizes (original and uploaded)
+    - Audio duration (when available)
+    - Processing settings used (model, language, prompt)
+  - History view displays only relevant information for each entry, with expandable details.
   - Secure API key storage using EncryptedSharedPreferences.
   - In-app Settings allow you to:  
     - Save and test your OpenAI API key.  
@@ -59,11 +64,16 @@ This app lets you easily transcribe media files (audio or video) using AI. Users
 3. **Transcription & Cleanup:**  
    - The processed file is uploaded to the selected transcription API.
    - Once transcribed, the text is optionally enhanced with an AI cleanup process.
-   - The final transcript is displayed and stored locally.
+   - The final transcript is displayed and stored locally with comprehensive statistics:
+     - File sizes (original and processed)
+     - Transcript length
+     - All processing parameters used
 
 4. **History & Management:**  
-   - View past transcriptions along with details (e.g., model used, language, timestamp).
-   - Copy or delete history entries as needed.
+   - View past transcriptions with detailed statistics (file sizes, transcript length, duration).
+   - Each entry shows only relevant processing settings that were actually used.
+   - Copy transcriptions with or without detailed statistics.
+   - Delete individual entries or clear all history as needed.
 
 ## Flowchart
 
