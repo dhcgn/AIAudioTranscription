@@ -32,6 +32,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -587,6 +588,33 @@ fun MainContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Progress indicator section
+        if (processingState != ProcessingState.Idle) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = when (processingState) {
+                        ProcessingState.CopyingMedia -> "Copying Media File..."
+                        ProcessingState.EncodingAudio -> "Encoding to Optimized Audio Format..."
+                        ProcessingState.UploadingForTranscription -> "Uploading to OpenAI for Transcription..."
+                        ProcessingState.WaitingForTranscription -> "Waiting for OpenAI Transcription..."
+                        ProcessingState.UploadingForReformat -> "Uploading to OpenAI for Reformat..."
+                        ProcessingState.WaitingForReformat -> "Waiting for OpenAI to Reformat..."
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         // First row - Main action button
         Row(
             modifier = Modifier
@@ -599,19 +627,8 @@ fun MainContent(
                 enabled = processingState == ProcessingState.Idle,
                 modifier = Modifier.weight(1f)
             ) {
-                val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
-                val buttonText = when (processingState) {
-                    ProcessingState.Idle -> "Select File and Transcribe"
-                    ProcessingState.CopyingMedia -> "Copying Media File..."
-                    ProcessingState.EncodingAudio -> "Encoding to Optimized Audio Format..."
-                    ProcessingState.UploadingForTranscription -> "Uploading to OpenAI for Transcription..."
-                    ProcessingState.WaitingForTranscription -> "Waiting for OpenAI Transcription..."
-                    ProcessingState.UploadingForReformat -> "Uploading to OpenAI for Reformat..."
-                    ProcessingState.WaitingForReformat -> "Waiting for OpenAI to Reformat..."
-                    else -> {"Unknown State"}
-                }
                 Text(
-                    buttonText,
+                    "Select File and Transcribe",
                     style = MaterialTheme.typography.titleMedium
                 )
             }
