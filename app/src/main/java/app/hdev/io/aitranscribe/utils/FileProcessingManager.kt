@@ -31,7 +31,8 @@ import kotlin.coroutines.resumeWithException
 data class ProcessingResult(
     val processedFile: File,
     val originalFileSizeBytes: Long,
-    val processedFileSizeBytes: Long
+    val processedFileSizeBytes: Long,
+    val originalFileName: String? = null
 )
 
 @Singleton
@@ -44,9 +45,10 @@ class FileProcessingManager @Inject constructor(
         val outputFile = mp4OutputFile
 
         try {
-            // 1. Copy input file
+            // 1. Copy input file and extract original filename
             val inputFile = copyUriToFile(uri)
             val originalFileSize = inputFile.length()
+            val originalFileName = getFileNameFromUri(uri)
 
             // 2. Ensure output file is clean
             if (outputFile.exists()) {
@@ -92,7 +94,8 @@ class FileProcessingManager @Inject constructor(
             ProcessingResult(
                 processedFile = outputFile,
                 originalFileSizeBytes = originalFileSize,
-                processedFileSizeBytes = processedFileSize
+                processedFileSizeBytes = processedFileSize,
+                originalFileName = originalFileName
             )
         } catch (e: Exception) {
             // Clean up output file on error
@@ -160,6 +163,19 @@ class FileProcessingManager @Inject constructor(
             }
         } ?: throw FileProcessingException("Could not open input stream for URI")
         tempFile
+    }
+    
+    private fun getFileNameFromUri(uri: Uri): String? {
+        // Try to get the display name from the content resolver
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (nameIndex != -1 && cursor.moveToFirst()) {
+                return cursor.getString(nameIndex)
+            }
+        }
+        
+        // Fallback to the last path segment
+        return uri.lastPathSegment
     }
 }
 

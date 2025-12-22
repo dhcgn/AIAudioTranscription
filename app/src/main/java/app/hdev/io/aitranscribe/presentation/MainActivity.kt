@@ -192,8 +192,9 @@ class MainActivity : ComponentActivity() {
                     this@MainActivity, 
                     processingResult.processedFile.absolutePath,
                     processingResult.originalFileSizeBytes,
-                    processingResult.processedFileSizeBytes
-                ) { transcription ->
+                    processingResult.processedFileSizeBytes,
+                    processingResult.originalFileName
+                ) { transcription, usedModel ->
                     transcriptionState.value = transcription
                     
                     // Check if auto-format is enabled
@@ -216,8 +217,8 @@ class MainActivity : ComponentActivity() {
                                             text = reformattedText,
                                             language = languageState.value,
                                             prompt = AUTO_FORMAT_PROMPT_HINT,
-                                            sourceHint = processingResult.processedFile.absolutePath,
-                                            model = SharedPrefsUtils.getTranscriptionModel(this@MainActivity, MODEL_WHISPER),
+                                            sourceHint = processingResult.originalFileName ?: processingResult.processedFile.absolutePath,
+                                            model = usedModel, // Use the model from transcription
                                             originalFileSizeBytes = processingResult.originalFileSizeBytes,
                                             uploadedFileSizeBytes = processingResult.processedFileSizeBytes,
                                             transcriptLength = reformattedText.length,
@@ -262,7 +263,8 @@ class MainActivity : ComponentActivity() {
         filePath: String, 
         originalFileSizeBytes: Long,
         uploadedFileSizeBytes: Long,
-        onComplete: (String) -> Unit
+        originalFileName: String?,
+        onComplete: (String, String) -> Unit
     ) {
         val currentLanguage = languageState.value
         val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
@@ -309,7 +311,7 @@ class MainActivity : ComponentActivity() {
                                     text = transcriptionText,
                                     language = languageState.value,
                                     prompt = promptState.value,
-                                    sourceHint = filePath,
+                                    sourceHint = originalFileName ?: filePath,
                                     model = selectedModel, // Include model information
                                     originalFileSizeBytes = originalFileSizeBytes,
                                     uploadedFileSizeBytes = uploadedFileSizeBytes,
@@ -317,16 +319,16 @@ class MainActivity : ComponentActivity() {
                                     audioDurationSeconds = 0 // Duration not available from Whisper API
                                 )
                             )
-                            onComplete(transcriptionText)
+                            onComplete(transcriptionText, selectedModel)
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                            onComplete("Error: $errorBody")
+                            onComplete("Error: $errorBody", selectedModel)
                             processingState.value = ProcessingState.Idle
                         }
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
-                        onComplete("Error: ${t.message}")
+                        onComplete("Error: ${t.message}", selectedModel)
                         processingState.value = ProcessingState.Idle
                     }
                 })
@@ -363,7 +365,7 @@ class MainActivity : ComponentActivity() {
                                     text = transcriptionText,
                                     language = languageState.value,
                                     prompt = promptState.value,
-                                    sourceHint = filePath,
+                                    sourceHint = originalFileName ?: filePath,
                                     model = selectedModel, // Include model information
                                     originalFileSizeBytes = originalFileSizeBytes,
                                     uploadedFileSizeBytes = uploadedFileSizeBytes,
@@ -371,22 +373,22 @@ class MainActivity : ComponentActivity() {
                                     audioDurationSeconds = 0 // Duration not available from GPT-4o API
                                 )
                             )
-                            onComplete(transcriptionText)
+                            onComplete(transcriptionText, selectedModel)
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                            onComplete("Error: $errorBody")
+                            onComplete("Error: $errorBody", selectedModel)
                             processingState.value = ProcessingState.Idle
                         }
                     }
 
                     override fun onFailure(call: Call<WhisperResponse>, t: Throwable) {
-                        onComplete("Error: ${t.message}")
+                        onComplete("Error: ${t.message}", selectedModel)
                         processingState.value = ProcessingState.Idle
                     }
                 })
         } else {
             // Unsupported model
-            onComplete("Error: Unsupported transcription model: $selectedModel")
+            onComplete("Error: Unsupported transcription model: $selectedModel", selectedModel)
             processingState.value = ProcessingState.Idle
         }
     }
