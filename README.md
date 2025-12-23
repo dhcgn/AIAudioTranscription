@@ -105,9 +105,15 @@ graph TD
 - **User Responsibility:**  
   Use your own OpenAI API key. You are responsible for any costs incurred, and you must comply with OpenAI’s Terms of Service.
 
-## Next Steps
 
+## Testing
+
+For developers and testers who want to build the app with a pre-configured OpenAI API key for testing, see the [Testing Guide](TESTING.md). This allows you to create builds with embedded API keys without committing secrets to the repository.
+
+
+## Next Steps
 Future enhancements include:
+
 - Refactoring UI state management into ViewModels.
 - Consolidating duplicated code and further adopting Kotlin coroutines with Retrofit’s suspend functions.
 - Enhancing the UI and user interaction flow.

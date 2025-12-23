@@ -6,6 +6,18 @@ plugins {
     alias(libs.plugins.hilt.android)
 }
 
+// Read properties from local.properties file
+val localProperties = java.util.Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { stream ->
+        localProperties.load(stream)
+    }
+}
+
+// Get the OpenAI API key from local.properties, or use empty string if not found
+val openAiApiKey: String = localProperties.getProperty("OPENAI_API_KEY", "")
+
 android {
     namespace = "app.hdev.io.aitranscribe"
     compileSdk = 35
@@ -18,6 +30,9 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Add the API key to BuildConfig
+        buildConfigField("String", "DEFAULT_OPENAI_API_KEY", "\"$openAiApiKey\"")
     }
 
     buildTypes {
