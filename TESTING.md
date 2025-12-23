@@ -52,15 +52,23 @@ Build the app normally using Gradle:
 
 ```bash
 # For release build
-./gradlew assembleRelease
+./gradlew clean assembleRelease
 
-# For debug build
-./gradlew assembleDebug
+# For debug build (recommended for testing)
+./gradlew clean assembleDebug
 ```
 
+**Note:** Use `clean` to ensure BuildConfig is regenerated with the new API key.
+
 Or build through Android Studio:
-1. Select **Build > Build Bundle(s) / APK(s) > Build APK(s)** or **Build Bundle(s)**
-2. The APK or AAB will be generated with the embedded API key
+1. **Important:** First do **Build > Clean Project** to ensure BuildConfig is regenerated
+2. Then **Build > Rebuild Project** or **Build > Build Bundle(s) / APK(s) > Build APK(s)**
+3. The APK or AAB will be generated with the embedded API key
+
+**For debugging from Android Studio:**
+- After adding the key to `local.properties`, do Clean + Rebuild
+- Uninstall any previous version from your device/emulator
+- Then run/debug normally - the key will be automatically configured on first launch
 
 ### Step 4: Install and Test
 
@@ -110,20 +118,56 @@ If you don't want to pre-configure an API key:
 
 ## Troubleshooting
 
+### Using with Android Studio (Debugging on Phone/Emulator)
+
+When debugging from Android Studio, the mechanism works exactly the same way. However, you must ensure BuildConfig is regenerated:
+
+**Steps for Android Studio:**
+1. Add your API key to `local.properties` in the project root:
+   ```properties
+   OPENAI_API_KEY=sk-your-key-here
+   ```
+
+2. **Clean and rebuild the project** (this is crucial):
+   - Menu: `Build > Clean Project`
+   - Then: `Build > Rebuild Project`
+   - Or run: `./gradlew clean assembleDebug`
+
+3. **Uninstall the old app** from your phone/emulator completely
+
+4. **Run/Debug** from Android Studio as normal
+
+5. On first launch, check Settings to verify the API key is present
+
+**Why clean/rebuild is needed:**
+- BuildConfig is a generated file that contains the API key
+- Android Studio/Gradle only regenerates it when you do a clean build
+- If you added the key after building, the old BuildConfig won't have it
+
+**To verify the key was embedded:**
+After rebuilding, you can check the generated BuildConfig file:
+```
+app/build/generated/source/buildConfig/debug/app/hdev/io/aitranscribe/BuildConfig.java
+```
+Look for `DEFAULT_OPENAI_API_KEY` constant.
+
 ### "API key is missing" Error
 
 If you see this error after building with a key:
 1. Verify that `local.properties` exists in the **root project directory** (not in the `app` folder)
 2. Check that the property is named exactly `OPENAI_API_KEY` (case-sensitive)
 3. Ensure there are no extra spaces around the `=` sign
-4. Rebuild the app completely: `./gradlew clean assembleRelease`
+4. **Clean and rebuild**: `./gradlew clean assembleDebug` (or clean + rebuild in Android Studio)
+5. Completely uninstall the old app before installing the new build
 
 ### Key Not Loading Automatically
 
 If the key doesn't load on first launch:
-1. Completely uninstall the app from the device
-2. Rebuild the app to ensure the latest code is included
-3. Reinstall and launch
+1. Verify BuildConfig was regenerated (see "Using with Android Studio" above)
+2. Completely uninstall the app from the device
+3. Clean and rebuild the app: `./gradlew clean assembleDebug`
+4. Reinstall and launch
+5. Check Settings screen to verify the API key is present
 
 ### Accidental Commit Warning
 
