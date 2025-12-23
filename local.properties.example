@@ -1,0 +1,19 @@
+# Example local.properties file for AI Audio Transcription App
+# 
+# This file is used to configure build-time settings that should NOT be
+# committed to version control. The actual local.properties file is already
+# in .gitignore.
+#
+# Copy this file to 'local.properties' and fill in your values.
+
+# OpenAI API Key for testing
+# This key will be embedded in the build and automatically loaded on first app launch.
+# Only use this for testing builds - never commit your actual API key to git!
+# 
+# Get your API key from: https://platform.openai.com/api-keys
+#
+# Example:
+# OPENAI_API_KEY=sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz1234567890
+#
+# Leave empty or comment out if you don't want to pre-configure an API key:
+OPENAI_API_KEY=
