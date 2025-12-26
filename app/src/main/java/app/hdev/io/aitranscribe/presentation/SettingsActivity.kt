@@ -1,6 +1,7 @@
 package app.hdev.io.aitranscribe.presentation
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -474,6 +475,27 @@ fun SettingsScreen(
             ) {
                 Text("Reset")
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Logging section
+        Text("Application Logs", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "View detailed logs of all application events including file operations, " +
+                    "audio re-encoding, and API communications.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = {
+                context.startActivity(Intent(context, LoggingActivity::class.java))
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Open Logging View")
         }
     }
 }
