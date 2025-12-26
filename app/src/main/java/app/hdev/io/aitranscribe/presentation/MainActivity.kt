@@ -51,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -83,6 +85,8 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
 import android.provider.OpenableColumns
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.text.selection.DisableSelection
 import javax.inject.Inject
 
@@ -109,7 +113,7 @@ class MainActivity : ComponentActivity() {
     private var lastUsedUri: Uri? = null
 
     private val filePicker =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             uri?.let { handleFileUri(it) }
         }
 
@@ -141,7 +145,7 @@ class MainActivity : ComponentActivity() {
                     topBar = { AppTopBar() }
                 ) { innerPadding ->
                     MainContent(
-                        onPickFile = { filePicker.launch("audio/*") },
+                        onPickFile = { filePicker.launch(arrayOf("audio/*", "video/*")) },
                         onRetry = { retryTranscription() },
                         onClearFile = { clearSelectedFile() },
                         transcription = transcriptionState.value,
@@ -622,9 +626,17 @@ fun MainContent(
                         .verticalScroll(rememberScrollState())
                 ) {
                     SelectionContainer {
+                        val placeholderText = "Transcription will appear here!\n\nShare voice messages with this app or select file from storage to transcribe.\n\nAll other media files are also compatible, but videos could take a bit longer because of the re-encoding process."
+                        val displayText = transcription.ifEmpty { placeholderText }
+                        val displayStyle = if (transcription.isEmpty()) {
+                            MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic)
+                        } else {
+                            MaterialTheme.typography.bodyLarge
+                        }
+
                         Text(
-                            text = transcription.ifEmpty { "Transcription will appear here!\n\nShare voice messages with this app or select file from storage to transcribe.\n\nAll other media files are also compatible, but videos could take a bit longer because of the re-encoding process." },
-                            style = MaterialTheme.typography.bodyLarge,
+                            text = displayText,
+                            style = displayStyle,
                             color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.padding(8.dp)
                         )
@@ -649,6 +661,7 @@ fun MainContent(
                         .padding(horizontal = 8.dp, vertical = 4.dp), // Reduced vertical padding
                     horizontalArrangement = Arrangement.spacedBy(4.dp) // Reduced spacing between buttons
                 ) {
+                    // Copy button
                     IconButton(
                         onClick = {
                             val clipboard =
@@ -664,20 +677,25 @@ fun MainContent(
                         Row(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 4.dp) // Add small vertical padding
+                            modifier = Modifier.padding(horizontal = 0.dp, vertical = 0.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Copy",
-                                modifier = Modifier.scale(0.7f)
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "Copy to Clipboard",
-                                modifier = Modifier.scale(0.8f)
+                                modifier = Modifier.padding(start = 2.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Visible
                             )
                         }
                     }
 
+                    // Reformat button
                     IconButton(
                         onClick = {
                             if (transcription.isNotEmpty()) {
@@ -719,16 +737,41 @@ fun MainContent(
                         Row(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 4.dp) // Add small vertical padding
+                            modifier = Modifier.padding(horizontal = 0.dp, vertical = 0.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "Reformat",
-                                modifier = Modifier.scale(0.7f)
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text ="Reformat with AI",
-                                modifier = Modifier.scale(0.8f)
+                                text = "Reformat with AI",
+                                modifier = Modifier.padding(start = 2.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Visible
+                            )
+                        }
+                    }
+
+                    // Clear button
+                    IconButton(
+                        onClick = { onTranscriptionUpdate("") },
+                        enabled = processingState == ProcessingState.Idle && transcription.isNotEmpty(),
+                        modifier = Modifier
+                            .padding(horizontal = 0.dp)
+                            .wrapContentWidth()
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear transcription",
+                                modifier = Modifier.scale(0.7f)
                             )
                         }
                     }
