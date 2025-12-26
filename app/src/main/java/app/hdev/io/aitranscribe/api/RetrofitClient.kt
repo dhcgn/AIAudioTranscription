@@ -2,6 +2,9 @@ package app.hdev.io.aitranscribe.api
 
 import android.content.Context
 import app.hdev.io.aitranscribe.sharedPrefsUtils.SharedPrefsUtils
+import app.hdev.io.aitranscribe.utils.LogCategory
+import app.hdev.io.aitranscribe.utils.LogManager
+import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,7 +27,20 @@ object RetrofitClient {
                 .newBuilder()
                 .addHeader("Authorization", "Bearer $apiKey")
                 .build()
-            chain.proceed(request)
+            
+            // Log API call
+            runBlocking {
+                LogManager.log(LogCategory.API_CALL, "API Request: ${request.method} ${request.url}")
+            }
+            
+            val response = chain.proceed(request)
+            
+            // Log API response
+            runBlocking {
+                LogManager.log(LogCategory.API_CALL, "API Response: ${response.code} for ${request.url}")
+            }
+            
+            response
         }
 
         // Logging Interceptor for debugging (optional)

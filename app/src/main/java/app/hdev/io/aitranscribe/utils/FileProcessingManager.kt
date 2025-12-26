@@ -45,10 +45,14 @@ class FileProcessingManager @Inject constructor(
         val outputFile = mp4OutputFile
 
         try {
+            LogManager.log(LogCategory.FILE_OP, "Starting audio file processing for URI: $uri")
+            
             // 1. Copy input file and extract original filename
             val inputFile = copyUriToFile(uri)
             val originalFileSize = inputFile.length()
             val originalFileName = getFileNameFromUri(uri)
+            
+            LogManager.log(LogCategory.FILE_OP, "Copied input file: ${inputFile.name}, size: $originalFileSize bytes")
 
             // 2. Ensure output file is clean
             if (outputFile.exists()) {
@@ -61,6 +65,8 @@ class FileProcessingManager @Inject constructor(
             val maxSizeBytes = 25 * 1024 * 1024L
             var attempts = 0
             val maxAttempts = 10
+            
+            LogManager.log(LogCategory.REENCODE, "Starting audio re-encoding with bitrate: $bitrate bps")
 
             while (attempts < maxAttempts) {
                 convertAudioFile(inputFile.absolutePath, outputFile.absolutePath, bitrate)
@@ -68,6 +74,7 @@ class FileProcessingManager @Inject constructor(
 
                 val currentSize = outputFile.length()
                 if (currentSize <= maxSizeBytes || bitrate <= minBitrate) {
+                    LogManager.log(LogCategory.REENCODE, "Audio re-encoding completed in $attempts attempt(s). Output size: $currentSize bytes, bitrate: $bitrate bps")
                     break
                 }
 
@@ -84,10 +91,13 @@ class FileProcessingManager @Inject constructor(
 
                 // Clamp to min
                 bitrate = maxOf(minBitrate, nextBitrate)
+                
+                LogManager.log(LogCategory.REENCODE, "Re-encoding attempt $attempts: file too large ($currentSize bytes), reducing bitrate to $bitrate bps")
             }
 
             // 4. Clean up input file
             inputFile.delete()
+            LogManager.log(LogCategory.FILE_OP, "Cleaned up temporary input file")
             
             val processedFileSize = outputFile.length()
 
@@ -98,6 +108,7 @@ class FileProcessingManager @Inject constructor(
                 originalFileName = originalFileName
             )
         } catch (e: Exception) {
+            LogManager.log(LogCategory.ERROR, "Audio file processing failed: ${e.message}")
             // Clean up output file on error
             if (outputFile.exists()) {
                 outputFile.delete()
