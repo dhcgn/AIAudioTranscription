@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import app.hdev.io.aitranscribe.api.MODEL_WHISPER
 
 object SharedPrefsUtils {
     // Preference Keys
@@ -78,8 +79,8 @@ Transcript:
         getNormalPrefs(context).edit().putString(TRANSCRIPTION_MODEL_KEY, model).apply()
     }
 
-    fun getTranscriptionModel(context: Context, defaultModel: String): String {
-        return getNormalPrefs(context).getString(TRANSCRIPTION_MODEL_KEY, defaultModel) ?: defaultModel
+    fun getTranscriptionModel(context: Context): String {
+        return getNormalPrefs(context).getString(TRANSCRIPTION_MODEL_KEY, MODEL_WHISPER) ?: MODEL_WHISPER
     }
 
     // Whisper Prompt

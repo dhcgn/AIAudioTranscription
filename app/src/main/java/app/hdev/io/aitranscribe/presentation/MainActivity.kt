@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
         // Load saved settings
         languageState.value = SharedPrefsUtils.getLanguage(this)
         promptState.value = SharedPrefsUtils.getWhisperPrompt(this)
-        modelState.value = SharedPrefsUtils.getTranscriptionModel(this, MODEL_WHISPER)
+        modelState.value = SharedPrefsUtils.getTranscriptionModel(this)
         autoFormatState.value = SharedPrefsUtils.getAutoFormat(this)
 
         // Handle shared media from external apps
@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
         // Refresh settings when returning to the activity
         languageState.value = SharedPrefsUtils.getLanguage(this)
         promptState.value = SharedPrefsUtils.getWhisperPrompt(this)
-        modelState.value = SharedPrefsUtils.getTranscriptionModel(this, MODEL_WHISPER)
+        modelState.value = SharedPrefsUtils.getTranscriptionModel(this)
         autoFormatState.value = SharedPrefsUtils.getAutoFormat(this)
     }
 
@@ -323,7 +323,7 @@ class MainActivity : ComponentActivity() {
         onComplete: (String, String) -> Unit
     ) {
         val currentLanguage = languageState.value
-        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER)
+        val selectedModel = SharedPrefsUtils.getTranscriptionModel(context)
 
         val retrofit = RetrofitClient.create(context)
         val openAiApiService = retrofit.create(OpenAiApiService::class.java)
@@ -696,7 +696,7 @@ fun MainContent(
                                                     language = language,
                                                     prompt = "Reformatted version of previous transcription",
                                                     sourceHint = "AI Reformat",
-                                                    model = SharedPrefsUtils.getTranscriptionModel(context, MODEL_WHISPER), // Include model information
+                                                    model = SharedPrefsUtils.getTranscriptionModel(context), // Include model information
                                                     transcriptLength = reformattedText.length,
                                                     // No file size data available for manual reformat operations
                                                     originalFileSizeBytes = 0,

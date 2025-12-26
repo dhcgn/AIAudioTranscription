@@ -83,7 +83,7 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         storedApiKey = SharedPrefsUtils.getApiKey(context) ?: ""
         reformatPrompt = SharedPrefsUtils.getReformatPrompt(context)
-        selectedModel = SharedPrefsUtils.getTranscriptionModel(context, MODEL_GPT_4O_MINI_TRANSCRIBE)
+        selectedModel = SharedPrefsUtils.getTranscriptionModel(context)
         language = SharedPrefsUtils.getLanguage(context)
         whisperPrompt = SharedPrefsUtils.getWhisperPrompt(context)
         gptPrompt = SharedPrefsUtils.getGptPrompt(context)
