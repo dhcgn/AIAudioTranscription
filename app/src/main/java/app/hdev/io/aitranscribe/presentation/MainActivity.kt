@@ -83,6 +83,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
 import android.provider.OpenableColumns
+import androidx.compose.foundation.text.selection.DisableSelection
 import javax.inject.Inject
 
 private const val MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024 // 24MB in bytes
@@ -116,15 +117,19 @@ class MainActivity : ComponentActivity() {
     private val processingState = mutableStateOf<ProcessingState>(ProcessingState.Idle)
     private val languageState = mutableStateOf("")
     private val promptState = mutableStateOf("")
+    private val modelState = mutableStateOf("")
+    private val autoFormatState = mutableStateOf(false)
     private val selectedFilePathState = mutableStateOf("")
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Load saved language and prompt - now without defaults
+        // Load saved settings
         languageState.value = SharedPrefsUtils.getLanguage(this)
         promptState.value = SharedPrefsUtils.getWhisperPrompt(this)
+        modelState.value = SharedPrefsUtils.getTranscriptionModel(this, MODEL_WHISPER)
+        autoFormatState.value = SharedPrefsUtils.getAutoFormat(this)
 
         // Handle shared media from external apps
         intent?.let { handleSharedIntent(it) }
@@ -149,12 +154,23 @@ class MainActivity : ComponentActivity() {
                         onLanguageChange = { lang -> languageState.value = lang },
                         prompt = promptState.value,
                         onPromptChange = { newPrompt -> promptState.value = newPrompt },
+                        model = modelState.value,
+                        isAutoFormatEnabled = autoFormatState.value,
                         selectedFilePath = selectedFilePathState.value,
                         hasFileSelected = lastUsedUri != null
                     )
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh settings when returning to the activity
+        languageState.value = SharedPrefsUtils.getLanguage(this)
+        promptState.value = SharedPrefsUtils.getWhisperPrompt(this)
+        modelState.value = SharedPrefsUtils.getTranscriptionModel(this, MODEL_WHISPER)
+        autoFormatState.value = SharedPrefsUtils.getAutoFormat(this)
     }
 
     private fun handleSharedIntent(intent: Intent) {
@@ -529,6 +545,8 @@ fun MainContent(
     onLanguageChange: (String) -> Unit,
     prompt: String,
     onPromptChange: (String) -> Unit,
+    model: String,
+    isAutoFormatEnabled: Boolean,
     selectedFilePath: String = "",
     hasFileSelected: Boolean = false
 ) {
@@ -605,11 +623,24 @@ fun MainContent(
                 ) {
                     SelectionContainer {
                         Text(
-                            text = transcription.ifEmpty { "Transcription will appear here..." },
+                            text = transcription.ifEmpty { "Transcription will appear here!\n\nShare voice messages with this app or select file from storage to transcribe.\n\nAll other media files are also compatible, but videos could take a bit longer because of the re-encoding process." },
                             style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.padding(8.dp)
                         )
                     }
+                }
+
+                // Additional information
+                if (transcription.isEmpty()) {
+                    Text(
+                        text = "Model: $model\nAuto-format: ${if (isAutoFormatEnabled) "On" else "Off"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier
+                            .align(Alignment.Start)
+                            .padding(horizontal = 8.dp)
+                    )
                 }
 
                 Row(
@@ -627,6 +658,7 @@ fun MainContent(
                             Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT)
                                 .show()
                         },
+                        enabled = transcription.isNotEmpty(),
                         modifier = Modifier.weight(1f)
                     ) {
                         Row(
@@ -788,7 +820,7 @@ fun MainContent(
             Button(
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                        data = Uri.parse("https://github.com/dhcgn/AIAudioTranscription")
+                        data = Uri.parse("https://github.com/dhcgn/AIAudioTranscription/wiki")
                     }
                     context.startActivity(intent)
                 },
@@ -808,7 +840,8 @@ fun MainContentPreview() {
             onPickFile = {},
             onRetry = {},
             onClearFile = {},
-            transcription = "This is a sample transcription displayed in the preview.",
+            transcription = "",
+            //transcription = "This is a sample transcription displayed in the preview.",
             processingState = ProcessingState.Idle,
             onReformatRequest = { "" },
             onProcessingStateChanged = {},
@@ -817,6 +850,8 @@ fun MainContentPreview() {
             onLanguageChange = {},
             prompt = "voice message of one person",
             onPromptChange = {},
+            model = "whisper-1",
+            isAutoFormatEnabled = true,
             selectedFilePath = "sample_audio.mp3",
             hasFileSelected = true
         )
