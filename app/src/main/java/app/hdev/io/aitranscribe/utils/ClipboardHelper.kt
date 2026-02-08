@@ -19,7 +19,8 @@ object ClipboardHelper {
     
     /**
      * Maximum character count for clipboard operations.
-     * Beyond this threshold, text will be saved to a file instead.
+     * Text with length <= this value will be copied to clipboard.
+     * Text with length > this value will be saved to a file instead.
      */
     const val MAX_CLIPBOARD_CHARS = 20_000
     

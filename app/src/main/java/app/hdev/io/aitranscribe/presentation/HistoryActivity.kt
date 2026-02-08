@@ -183,7 +183,7 @@ class HistoryActivity : ComponentActivity() {
         }
     }
 
-    private fun handleCopyToClipboard(text: String, fileName: String = "transcription") {
+    private fun handleCopyToClipboard(text: String, fileName: String) {
         ClipboardHelper.handleTextCopy(
             context = this,
             text = text,
