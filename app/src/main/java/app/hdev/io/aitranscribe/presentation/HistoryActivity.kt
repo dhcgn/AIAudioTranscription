@@ -3,6 +3,7 @@ package app.hdev.io.aitranscribe.presentation
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -29,6 +32,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import app.hdev.io.aitranscribe.data.TranscriptionDbHelper
 import app.hdev.io.aitranscribe.data.TranscriptionEntry
 import app.hdev.io.aitranscribe.ui.theme.AIAudioTranscriptionTheme
+import app.hdev.io.aitranscribe.utils.ClipboardHelper
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
@@ -129,6 +133,22 @@ fun HistoryTopBarPreview() {
 }
 
 class HistoryActivity : ComponentActivity() {
+    // File save launcher for large clipboard text
+    private var pendingTextForSave: String? = null
+    private val fileSaveLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    pendingTextForSave?.let { text ->
+                        ClipboardHelper.writeTextToUri(this, uri, text)
+                        pendingTextForSave = null
+                    }
+                }
+            } else {
+                pendingTextForSave = null
+            }
+        }
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -152,15 +172,36 @@ class HistoryActivity : ComponentActivity() {
                         )
                     }
                 ) { padding ->
-                    HistoryScreen(modifier = Modifier.padding(padding))
+                    HistoryScreen(
+                        modifier = Modifier.padding(padding),
+                        onCopyToClipboard = { text, fileName ->
+                            handleCopyToClipboard(text, fileName)
+                        }
+                    )
                 }
             }
         }
     }
+
+    private fun handleCopyToClipboard(text: String, fileName: String = "transcription") {
+        ClipboardHelper.handleTextCopy(
+            context = this,
+            text = text,
+            label = "Transcription",
+            fileName = fileName,
+            fileSaveLauncher = fileSaveLauncher,
+            onFileSaveInitiated = { textToSave ->
+                pendingTextForSave = textToSave
+            }
+        )
+    }
 }
 
 @Composable
-fun HistoryScreen(modifier: Modifier = Modifier) {
+fun HistoryScreen(
+    modifier: Modifier = Modifier,
+    onCopyToClipboard: (String, String) -> Unit = { _, _ -> }
+) {
     val context = LocalContext.current
     val dbHelper = remember { TranscriptionDbHelper(context) }
     val transcriptions = remember { mutableStateOf(listOf<TranscriptionEntry>()) }
@@ -175,14 +216,20 @@ fun HistoryScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(transcriptions.value) { entry ->
-            TranscriptionHistoryItem(entry = entry)
+            TranscriptionHistoryItem(
+                entry = entry,
+                onCopyToClipboard = onCopyToClipboard
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
+fun TranscriptionHistoryItem(
+    entry: TranscriptionEntry,
+    onCopyToClipboard: (String, String) -> Unit = { _, _ -> }
+) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
@@ -347,10 +394,7 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                             text = { Text("Copy") },
                             onClick = {
                                 showMenu = false
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("Transcription", entry.text)
-                                clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
+                                onCopyToClipboard(entry.text, "transcription_${entry.timestamp}")
                             },
                             leadingIcon = {
                                 Icon(
@@ -400,10 +444,7 @@ fun TranscriptionHistoryItem(entry: TranscriptionEntry) {
                                     }
                                     appendLine("• Date: ${dateFormat.format(entry.timestamp)}")
                                 }
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("Transcription with Details", detailedText)
-                                clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, "Text with details copied to clipboard", Toast.LENGTH_SHORT).show()
+                                onCopyToClipboard(detailedText, "transcription_details_${entry.timestamp}")
                             },
                             leadingIcon = {
                                 Icon(
