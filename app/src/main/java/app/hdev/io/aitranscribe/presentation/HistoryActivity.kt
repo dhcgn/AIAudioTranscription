@@ -391,7 +391,15 @@ fun TranscriptionHistoryItem(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Copy") },
+                            text = { 
+                                Text(
+                                    if (entry.text.length > ClipboardHelper.MAX_CLIPBOARD_CHARS) {
+                                        "Save to Disk"
+                                    } else {
+                                        "Copy"
+                                    }
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onCopyToClipboard(entry.text, "transcription_${entry.timestamp}")
@@ -405,7 +413,15 @@ fun TranscriptionHistoryItem(
                         )
 
                         DropdownMenuItem(
-                            text = { Text("Copy with Details") },
+                            text = { 
+                                Text(
+                                    if (entry.text.length > ClipboardHelper.MAX_CLIPBOARD_CHARS) {
+                                        "Save with Details to Disk"
+                                    } else {
+                                        "Copy with Details"
+                                    }
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 val detailedText = buildString {

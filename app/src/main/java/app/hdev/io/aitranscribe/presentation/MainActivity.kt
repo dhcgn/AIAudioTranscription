@@ -712,7 +712,11 @@ fun MainContent(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Copy to Clipboard",
+                                text = if (transcription.length > ClipboardHelper.MAX_CLIPBOARD_CHARS) {
+                                    "Save to Disk"
+                                } else {
+                                    "Copy to Clipboard"
+                                },
                                 modifier = Modifier.padding(start = 2.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
