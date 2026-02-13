@@ -6,14 +6,14 @@
 
 ## Overview
 
-This app lets you easily transcribe media files (audio or video) using AI. Users can upload, share, or open media files which are then re-encoded and sent to multiple transcription models. The app supports traditional Whisper-1 transcription, as well as newer GPT-4o variants that either directly transcribe or provide enhanced output. AI-powered post-processing further improves transcript readability. All transcriptions and settings are stored locally—with your API key secured in encrypted storage.
+This app lets you easily transcribe media files (audio or video) using AI. Users can upload, share, or open media files which are then re-encoded and sent to multiple transcription models. The app supports traditional Whisper-1 transcription, as well as GPT-4o Transcribe and GPT-4o-mini Transcribe models. AI-powered post-processing further improves transcript readability. All transcriptions and settings are stored locally—with your API key secured in encrypted storage.
 
 ## Key Features
 
 - **Media Handling:**  
   - Select, share, or open media files directly from your device.
   - Direct transcription of voice messages from messaging apps like WhatsApp, Telegram, or Signal.
-  - Automatic re-encoding using FFmpegKit to **M4A/AAC** format for all transcription models.
+  - Automatic re-encoding using **Media3 Transformer** to **M4A/AAC** format (adaptive bitrate 16–32 kbps) for all transcription models.
   - File size check (max. 24MB after processing) to ensure smooth operation.
 
 - **Multiple Transcription Models:**  
@@ -22,7 +22,7 @@ This app lets you easily transcribe media files (audio or video) using AI. Users
   - **GPT-4o-mini Transcribe:** Efficient transcription model for cost-effective processing.
 
 - **AI-Powered Cleanup:**  
-  - Enhance transcript readability with AI-driven cleanup using GPT-4o chat completions.
+  - Enhance transcript readability with AI-driven cleanup using OpenAI chat completions (GPT-5-nano).
   - Customizable cleanup prompts ensure the original content is preserved while improving clarity.
   - Optional auto-format setting to automatically enhance readability after every transcription.
 
