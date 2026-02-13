@@ -73,6 +73,7 @@ import app.hdev.io.aitranscribe.sharedPrefsUtils.SharedPrefsUtils
 import app.hdev.io.aitranscribe.ui.theme.AIAudioTranscriptionTheme
 import app.hdev.io.aitranscribe.utils.FileProcessingException
 import app.hdev.io.aitranscribe.utils.FileProcessingManager
+import app.hdev.io.aitranscribe.utils.ClipboardHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -115,6 +116,22 @@ class MainActivity : ComponentActivity() {
     private val filePicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             uri?.let { handleFileUri(it) }
+        }
+
+    // File save launcher for large clipboard text
+    private var pendingTextForSave: String? = null
+    private val fileSaveLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    pendingTextForSave?.let { text ->
+                        ClipboardHelper.writeTextToUri(this, uri, text)
+                        pendingTextForSave = null
+                    }
+                }
+            } else {
+                pendingTextForSave = null
+            }
         }
 
     private val transcriptionState = mutableStateOf("")
@@ -161,7 +178,8 @@ class MainActivity : ComponentActivity() {
                         model = modelState.value,
                         isAutoFormatEnabled = autoFormatState.value,
                         selectedFilePath = selectedFilePathState.value,
-                        hasFileSelected = lastUsedUri != null
+                        hasFileSelected = lastUsedUri != null,
+                        onCopyToClipboard = { text -> handleCopyToClipboard(text) }
                     )
                 }
             }
@@ -487,6 +505,19 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun handleCopyToClipboard(text: String) {
+        ClipboardHelper.handleTextCopy(
+            context = this,
+            text = text,
+            label = "Transcription",
+            fileName = "transcription",
+            fileSaveLauncher = fileSaveLauncher,
+            onFileSaveInitiated = { textToSave ->
+                pendingTextForSave = textToSave
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -552,7 +583,8 @@ fun MainContent(
     model: String,
     isAutoFormatEnabled: Boolean,
     selectedFilePath: String = "",
-    hasFileSelected: Boolean = false
+    hasFileSelected: Boolean = false,
+    onCopyToClipboard: (String) -> Unit = {}
 ) {
     var isApiKeySet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -664,12 +696,7 @@ fun MainContent(
                     // Copy button
                     IconButton(
                         onClick = {
-                            val clipboard =
-                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("Transcription", transcription)
-                            clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT)
-                                .show()
+                            onCopyToClipboard(transcription)
                         },
                         enabled = transcription.isNotEmpty(),
                         modifier = Modifier.weight(1f)
@@ -685,7 +712,11 @@ fun MainContent(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Copy to Clipboard",
+                                text = if (transcription.length > ClipboardHelper.MAX_CLIPBOARD_CHARS) {
+                                    "Save to Disk"
+                                } else {
+                                    "Copy to Clipboard"
+                                },
                                 modifier = Modifier.padding(start = 2.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
@@ -896,7 +927,8 @@ fun MainContentPreview() {
             model = "whisper-1",
             isAutoFormatEnabled = true,
             selectedFilePath = "sample_audio.mp3",
-            hasFileSelected = true
+            hasFileSelected = true,
+            onCopyToClipboard = {}
         )
     }
 }

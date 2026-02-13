@@ -1,91 +1,185 @@
-# Copilot Instructions for AI Assistance in the AI Transcription App
+# Copilot Instructions: AI Transcription App
 
-This document provides essential guidelines and context for AIs helping with this project. Follow these instructions to ensure that code modifications align with the project’s design, security, and maintainability goals.
+Android app for transcribing media files using OpenAI's Whisper API and GPT-4o models with AI-powered text cleanup. Built with Kotlin, Jetpack Compose, and Hilt for dependency injection.
 
----
+## Build & Test Commands
 
-## Project Overview
-- **Purpose:**  
-  Transcribe media files (audio/video) using OpenAI’s Whisper API and GPT-4o-based models with additional AI-powered text cleanup.
-- **Key Features:**  
-  - File selection (including sharing intents)  
-  - Audio processing (conversion via FFmpegKit to AAC/M4A format)  
-  - Transcription using multiple models  
-  - Local transcription history storage  
-  - Secure API key management via EncryptedSharedPreferences  
-  - Settings for language, prompts, and transcription models
+### Building
+```bash
+# Build debug APK
+./gradlew assembleDebug
 
----
+# Build release APK
+./gradlew assembleRelease
 
-## Technical Guidelines
+# Clean build (required after changing local.properties)
+./gradlew clean assembleDebug
+```
 
-### Architecture & Dependency Management
-- **Dependency Injection:**  
-  Use Hilt to inject dependencies (Retrofit service, database helper, file processing manager) rather than creating instances manually.
-- **UI State Management:**  
-  Prefer using a ViewModel to hold UI state and business logic rather than managing mutable state directly in Activities.
-- **Networking & Concurrency:**  
-  Use Retrofit’s coroutine support (suspend functions) for cleaner asynchronous code. Ensure all UI updates from background threads are dispatched on the main thread.
-- **Database:**  
-  Consider migrating from SQLiteOpenHelper to Room for better type safety, maintainability, and coroutine support.
+### Testing
+```bash
+# Run all unit tests
+./gradlew test
 
-### Code Quality & Maintainability
-- **Reduce Duplication:**  
-  Consolidate similar code paths (e.g., handling different transcription models) into shared helper methods.
-- **Gradle Scripts:**  
-  Consolidate dependency declarations to minimize duplication and improve readability.
-- **Logging:**  
-  Use logging interceptors only for debugging. Remove or disable sensitive logging in production builds.
+# Run specific test class
+./gradlew test --tests app.hdev.io.aitranscribe.ClipboardHelperTest
 
-### File Handling & Error Management
-- **Unique File Names:**  
-  When processing audio files, avoid hardcoding output file names. Use unique or temporary file names to prevent conflicts.
-- **Error Propagation:**  
-  Handle errors gracefully. For example, if the API key is missing or an FFmpeg command fails, notify the user instead of crashing.
-- **Threading:**  
-  Ensure background operations (file processing, network calls) run on appropriate threads, and any UI updates are posted on the main thread.
+# Run instrumented tests (requires emulator/device)
+./gradlew connectedAndroidTest
+```
 
-### Security & Permissions
-- **Sensitive Data:**  
-  Store API keys securely using EncryptedSharedPreferences. Avoid printing or logging sensitive information.
-- **Storage Permissions:**  
-  Reevaluate the use of legacy external storage permissions (e.g., WRITE_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE). Consider modern scoped storage (MediaStore) to improve security and compatibility.
+### Development with Pre-configured API Key
+For testing builds with embedded OpenAI API keys, see [TESTING.md](../TESTING.md). Add `OPENAI_API_KEY=sk-...` to `local.properties` and run `./gradlew clean assembleDebug`.
 
----
+## Architecture Overview
 
-## What to Avoid
-- **Hardcoding Sensitive Data:**  
-  Never hardcode API keys or secrets in the code.
-- **Redundant Dependency Initialization:**  
-  Do not instantiate dependencies manually when they can be injected via Hilt.
-- **Duplicated Logic:**  
-  Avoid duplicate implementations for similar features (e.g., transcription model handling). Instead, extract common functionality.
-- **Excessive Logging in Production:**  
-  Ensure sensitive information is not logged, and disable debug logging in release builds.
-- **Using Outdated Storage Permissions:**  
-  Replace legacy storage permissions with modern, scoped approaches wherever possible.
+### Core Components
 
----
+**Presentation Layer** (`presentation/`)
+- `MainActivity`: Main transcription UI with file selection, processing states, and result display
+- `SettingsActivity`: API key management, model selection, language/prompt configuration
+- `HistoryActivity`: Local transcription history with statistics and search
+- Built with Jetpack Compose; state managed directly in Activities (ViewModels not yet implemented)
 
-## Best Practices
-- Write idiomatic Kotlin and follow Android’s modern architecture patterns (e.g., MVVM, Jetpack Compose).
-- Leverage coroutines and Retrofit’s suspend functions for network operations.
-- Keep the UI responsive by offloading heavy operations (like file processing and network requests) to background threads.
-- Ensure meaningful error messages and graceful failure states for a better user experience.
-- Document functions clearly and maintain consistency in coding style.
+**Data Layer** (`data/`)
+- `TranscriptionDbHelper`: SQLiteOpenHelper for local history storage
+- `TranscriptionEntry`: Data model with transcript text, settings, and statistics (file sizes, duration, character count)
+- **Migration Note**: Room migration is planned but not yet implemented
 
----
+**API Layer** (`api/`)
+- `OpenAiApiService`: Retrofit service interface for OpenAI API
+- `RetrofitClient`: Creates Retrofit instance with OkHttp logging interceptor
+- Supports three models: `whisper-1`, `gpt-4o-audio-preview-transcribe`, `gpt-4o-mini-audio-preview-transcribe`
 
-## Project-Specific Tips
-- **Transcription Models:**  
-  Validate that the correct media type and encoding are used for each transcription model (e.g., Whisper vs. GPT-4o variants).
-- **FFmpeg Commands:**  
-  Carefully handle the FFmpeg command outputs and always clean up temporary files on errors.
-- **Settings & Preferences:**  
-  Make sure all user settings (API key, language, prompts, model selection) are saved and retrieved correctly.
-- **Testing:**  
-  Ensure comprehensive unit and instrumented tests are written to cover key functionalities.
+**Utils** (`utils/`)
+- `FileProcessingManager`: Handles media file copying, conversion to M4A/AAC using Media3 Transformer
+- `ClipboardHelper`: Formats transcription history entries for clipboard with statistics
+- Uses Hilt `@Singleton` and `@Inject` for dependency injection
 
----
+**DI Module** (`di/AppModule`)
+```kotlin
+@Provides @Singleton
+fun provideWhisperApiService(@ApplicationContext context: Context): OpenAiApiService
+fun provideTranscriptionDbHelper(@ApplicationContext context: Context): TranscriptionDbHelper
+```
 
-Use this document as a guide when suggesting changes or writing new code. It serves to maintain the project’s consistency, security, and performance as it evolves.
+**Security** (`sharedPrefsUtils/SharedPrefsUtils`)
+- API keys stored in `EncryptedSharedPreferences` with AES256_GCM encryption
+- BuildConfig mechanism for embedding test API keys from `local.properties`
+
+### Key Workflows
+
+**File Processing Pipeline**
+1. User selects/shares media file → URI received
+2. `FileProcessingManager.processAudioFile(uri)` copies and converts to M4A/AAC format
+3. File size validated (≤24MB) before upload
+4. Returns `ProcessingResult` with file metadata (original/processed sizes, filename)
+
+**Transcription Flow**
+1. Processed file uploaded via Retrofit multipart request
+2. Model-specific API endpoint called (Whisper or GPT-4o variants)
+3. Optional AI cleanup using GPT-4o chat completions with custom prompt
+4. Result stored in SQLite with comprehensive statistics
+5. UI displays transcript with copy/share/retry options
+
+**Auto-Format Feature**
+- When enabled in Settings, automatically runs AI cleanup after transcription
+- Uses configurable cleanup prompt to enhance readability while preserving content
+
+## Project Conventions
+
+### Dependency Injection
+- **Always use Hilt**: Inject `OpenAiApiService`, `TranscriptionDbHelper`, `FileProcessingManager`
+- Don't create instances manually (e.g., `RetrofitClient.create()` in Activities)
+- Use `@AndroidEntryPoint` on Activities that need injection
+
+### Concurrency Patterns
+- Network calls: Use Retrofit's `suspend` functions with `lifecycleScope.launch`
+- File operations: Wrap in `withContext(Dispatchers.IO)`
+- UI updates: Ensure main thread dispatch after background operations
+- Use `rememberCoroutineScope()` in Composables for async operations
+
+### File Processing
+- Audio conversion: Media3 Transformer with AAC encoder (adaptive bitrate: 16-32kbps)
+- Output format: Always M4A container with AAC codec
+- Temp files: Use `context.filesDir` for intermediate files, clean up on error
+- File naming: Avoid hardcoded names; use unique identifiers to prevent conflicts
+
+### Database Operations
+- All queries on background thread (SQLiteOpenHelper is sync-blocking)
+- Schema migrations: Use `onUpgrade()` with version checks
+- Statistics tracked: `originalFileSizeBytes`, `uploadedFileSizeBytes`, `transcriptLength`, `audioDurationSeconds`
+
+### API Key Management
+- Runtime storage: `SharedPrefsUtils.getApiKey(context)` / `saveApiKey(context, key)`
+- Build-time embedding: `BuildConfig.DEFAULT_OPENAI_API_KEY` from `local.properties`
+- Initialization: `AITranscriptionApp.onCreate()` transfers BuildConfig key to encrypted storage if not set
+- Never log or expose API keys in error messages
+
+### Testing Infrastructure
+- Unit tests: `app/src/test/` with JUnit 4
+- Existing tests: `ClipboardHelperTest`, `HistoryFormattingTest`
+- No instrumented tests currently implemented
+- Add tests when modifying `ClipboardHelper` or history formatting logic
+
+## Important Constraints
+
+### Security Requirements
+- Never commit API keys to repository
+- `local.properties` is in `.gitignore` - don't remove it
+- Disable sensitive logging in release builds (OkHttp interceptor)
+- Use scoped storage APIs, avoid legacy `MANAGE_EXTERNAL_STORAGE` permission
+
+### Known Limitations
+- ViewModels not implemented - state currently in Activities (planned refactor)
+- Room not used - still using SQLiteOpenHelper (planned migration)
+- Some duplicated transcription model handling code across MainActivity
+- File size limit: 24MB after processing (OpenAI API constraint)
+
+### When Making Changes
+- Changing `local.properties`: Always run `./gradlew clean` to regenerate BuildConfig
+- Modifying model handling: Update all three model branches (whisper-1, gpt-4o, gpt-4o-mini)
+- Database schema changes: Increment `DATABASE_VERSION` and add migration in `onUpgrade()`
+- API changes: Update Retrofit service interface and handle backward compatibility
+
+## Common Patterns
+
+### Making API Calls
+```kotlin
+lifecycleScope.launch {
+    try {
+        val response = apiService.createTranscription(filePart, modelPart, ...)
+        if (response.isSuccessful) {
+            // Handle success
+        }
+    } catch (e: Exception) {
+        // Handle error
+    }
+}
+```
+
+### File Processing
+```kotlin
+@Inject lateinit var fileProcessingManager: FileProcessingManager
+
+lifecycleScope.launch {
+    try {
+        val result = fileProcessingManager.processAudioFile(uri)
+        // Use result.processedFile, result.originalFileSizeBytes, etc.
+    } catch (e: FileProcessingException) {
+        // Handle error
+    }
+}
+```
+
+### Accessing Preferences
+```kotlin
+val apiKey = SharedPrefsUtils.getApiKey(context)
+val language = SharedPrefsUtils.getLanguage(context)
+val autoFormat = SharedPrefsUtils.getAutoFormat(context)
+```
+
+## Resources
+- [README.md](../README.md): Feature overview and flowcharts
+- [TESTING.md](../TESTING.md): API key embedding for test builds
+- [IMPLEMENTATION_SUMMARY.md](../IMPLEMENTATION_SUMMARY.md): API key mechanism technical details
