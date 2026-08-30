@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **This project is paused** in favor of [**hushscribe**](https://github.com/dhcgn/hushscribe).
+>
+> hushscribe transcribes confidential audio in the browser using attested confidential-computing inference ([Privatemode.ai](https://www.privatemode.ai/)): recordings are encrypted on-device and stay encrypted — even while the model transcribes them inside a TEE. This app, an Android transcription client for OpenAI's Whisper/GPT-4o API, uploads audio to OpenAI's servers for plain server-side processing. On the confidential-computing aspect, it is no match for hushscribe.
+
 # Android AI Transcription App
 
 [GitHub Repository](https://github.com/dhcgn/AIAudioTranscription) • [Copilot Instructions](.github/copilot-instructions.md)
